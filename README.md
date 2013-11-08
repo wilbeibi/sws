@@ -2,6 +2,7 @@ sws
 ===
 
 A group work of CS631 final project
+Team Name: 404NotFound
 
 ## TODO
 1. modify .gitignore

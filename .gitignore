@@ -16,3 +16,21 @@
 *.exe
 *.out
 *.app
+
+# Vim
+*.swp
+*.swo
+tmp/**/*
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Others
+tags

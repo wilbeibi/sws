@@ -1,10 +1,13 @@
 sws
 ===
 
-A group work of CS631 final project
+Project: Simple Web Server in C
 
 Team Name: 404NotFound
 
+
 ## TODO
-1. modify .gitignore
-2. Merge HW3 code and set framework, uniform the interface
+1. Fix current bugs of networking. (concurrency, IPv6)
+2. Add test cases
+3. parse requests part
+4. and more ...

@@ -72,12 +72,47 @@ void read_rest(int sock, Req_info * req, char* buf)
 	}
 }
 
+void process_dot_dot(char * dir)
+{
+	char * tmp, *tmp2;
+	tmp = dir;
+	while ((tmp = strstr(tmp, "/..")) != NULL) {
+		if ( *(tmp+3) == '/' || *(tmp+3) == '\0') {
+			if (tmp == dir) {
+				strncpy(dir,"/\0",2);
+				break;
+			}
+			else if (tmp > dir) {
+ 				tmp2 = tmp-1;
+				while (tmp2>=dir) { /* use tmp2 to find the slash before /../ */
+					if (*tmp2 == '/')
+						break;
+					tmp2 --;
+				}
+
+				
+				tmp = tmp+3;
+				while(*tmp != '\0') {
+					(*tmp2++) = (*tmp++);
+				}
+
+				*tmp2 = '\0';
+				if (*dir == '\0')
+					strncpy(dir,"/\0",2);
+				tmp = dir;
+			}
+		}
+		else 
+			continue;
+	}
+}
+
 int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 {
 	char * tmp = src;
 	char usr[256];
-	char rest[256];
-	int i;
+
+	int i,cgi = NO_CGI;
 	
 	req->uri = (char*)malloc(1024*sizeof(char));
 	if (req->uri == NULL) 
@@ -93,27 +128,28 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 			usr[i++] = *tmp++;
 		}
 		usr[i]='\0';
-		strncpy(rest,tmp,256);
-		//process_dot_dot();
-		sprintf(req->uri,"/home/%s/sws%s",usr,rest);
+		
+		process_dot_dot(tmp);
+		sprintf(req->uri,"/home/%s/sws/%s",usr,++tmp);
 			
 	}
 	else if (strncmp(src,"/cgi-bin/",9) == 0 && optInfo->cgiDir != NULL) {
 		tmp = src;
-		tmp += 9;
-		//process_dot_dot();
-		sprintf(req->uri,"%s%s",optInfo->cgiDir,tmp);
-		return DO_CGI;
+		tmp += 8;
+		process_dot_dot(tmp);
+		sprintf(req->uri,"%s%s",optInfo->cgiDir,++tmp);
+		cgi = DO_CGI;
 	}
 	else {
-		//process_dot_dot();
-		//sprintf(req->uri,"%s%s",server_root,src);
-		sprintf(req->uri,"%s",src);
+		process_dot_dot(src);
+		if (optInfo->rootDir == NULL)
+			optInfo->rootDir = "./\0";
+		sprintf(req->uri,"%s%s",optInfo->rootDir,++src);
 	}
 	
 	printf("uri:%s\n",req->uri);
 	
-	return NO_CGI;
+	return cgi;
 }
 
 int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
@@ -173,7 +209,7 @@ void read_sock(int sock, Arg_t *optInfo)
 	else{
 		bzero(buf, max);
 		read_rest(sock,&req,buf);
-		
+		printf("rest headers:%s\n",buf);
 		//serve_request(&req);
 	}
 	free(buf);

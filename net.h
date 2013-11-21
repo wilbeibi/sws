@@ -9,6 +9,7 @@ typedef struct arg_t{
     char *ipAddr;    /* -i address */
     char *logFile;   /* -l file */
     char *port;	     /* -p port */
+	char *rootDir;   /* Server root    */
 }Arg_t;
 
 

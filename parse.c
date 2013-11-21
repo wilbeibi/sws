@@ -43,9 +43,11 @@ int read_req_line(int sock,Req_info * req,int max,char* buf)
 void read_rest(int sock, Req_info * req, char* buf)
 {
 	int rval = 0, max =1024, w = 0, i = 1;
-	char * tmp,tmpbuf[max];
+	char tmpbuf[max];
 	
-	while(1) {		
+	while(1) {	
+		
+		bzero(tmpbuf,max);	
 		rval = read(sock,tmpbuf,max);
 		if (rval == 0) {
 			break; /* EOF */
@@ -64,10 +66,7 @@ void read_rest(int sock, Req_info * req, char* buf)
 				}	
 			}
 			sprintf(buf,"%s%s",buf,tmpbuf);
-			tmp=strstr(buf,"\r\n"); 
-			if (tmp != NULL && tmp == buf) /* direct CRLF after first line*/ 
-				break;
-			else if ( (tmp = strstr(buf,"\r\n\r\n")) != NULL) /* two CRLFs */
+			if ( (strcmp(tmpbuf,"\r\n")) == 0 ) 
 				break;
 		}	
 	}
@@ -82,7 +81,7 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 	
 	req->uri = (char*)malloc(1024*sizeof(char));
 	if (req->uri == NULL) 
-		req->status = 500;
+		req->status = 500; 
 	
 	if (src[0] != '/')
 		req->status = 400;
@@ -95,15 +94,25 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 		}
 		usr[i]='\0';
 		strncpy(rest,tmp,256);
-		sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
+		//process_dot_dot();
+		sprintf(req->uri,"/home/%s/sws%s",usr,rest);
 			
 	}
-	else if (strncmp(src,"/cgi-bin/",9) == 0) {
+	else if (strncmp(src,"/cgi-bin/",9) == 0 && optInfo->cgiDir != NULL) {
 		tmp = src;
 		tmp += 9;
+		//process_dot_dot();
 		sprintf(req->uri,"%s%s",optInfo->cgiDir,tmp);
 		return DO_CGI;
 	}
+	else {
+		//process_dot_dot();
+		//sprintf(req->uri,"%s%s",server_root,src);
+		sprintf(req->uri,"%s",src);
+	}
+	
+	printf("uri:%s\n",req->uri);
+	
 	return NO_CGI;
 }
 
@@ -111,11 +120,13 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 {	
 	char method[10], uri[256], version[20];
 	
-	bzero(method,10);
-	bzero(uri,256);
-	bzero(version,20);
 	sscanf(buf, "%s %s %s", method, uri, version);
 
+	if (strlen(method) < 1 || strlen(uri) < 1 || strlen(version) < 1) {
+		req->status = 400;	
+		return -1;
+	}
+	
 	if (strcasecmp(method, "GET")==0) {
 		req->method = GET;	
 	}else if (strcasecmp(method, "POST")==0)
@@ -154,6 +165,8 @@ void read_sock(int sock, Arg_t *optInfo)
 	printf("first line: %s\n",buf);
 	
 	parse_req_line(buf,&req,optInfo);
+	printf("status:%d\n",req.status);
+	
 	if (req.status != 200)
 		;//make_response(req.status);
 		

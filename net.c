@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 
 #include "net.h"
+#include "parse.h"
 
 #define DEBUG 1
 
@@ -57,12 +58,14 @@ int server_listen( Arg_t *optInfo){
 		/* Communicate with client */
 		if( (childpid = fork()) == 0){
 			Close(listenfd);
-			char readbuf[SIZE];
 			Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
-			while(Read(connfd, readbuf, SIZE) > 0){
-				printf("Client %s --> %s", ipstr, readbuf);
-				bzero(readbuf, SIZE);
-			}
+			
+			// while(Read(connfd, readbuf, SIZE) > 0){
+			// 	printf("Client %s --> %s", ipstr, readbuf);
+			// 	bzero(readbuf, SIZE);
+			// }
+			read_sock(connfd,optInfo);
+			
 			exit(0);
 		}else {
 			Signal(SIGCHLD, child_handler);

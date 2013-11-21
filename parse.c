@@ -15,6 +15,7 @@ void init_req(Req_info * req)
 	req->uri = NULL;
 }
 
+/*read the first line, ignore all empty lines util we actually get something*/
 int read_req_line(int sock,Req_info * req,int max,char* buf)
 {
 	int rval = 0, w=0;
@@ -24,7 +25,7 @@ int read_req_line(int sock,Req_info * req,int max,char* buf)
 		if (rval == 1) {
 			if (c != '\n' &&  c!='\r')
 				buf[w++] = c;
-			else if ( w != 0)
+			else if ( w != 0)  
 				break;
 		}
 		else if (rval == 0) 
@@ -40,6 +41,7 @@ int read_req_line(int sock,Req_info * req,int max,char* buf)
 	
 }
 
+/* read rest of the request headers, until we get an empty line */
 void read_rest(int sock, Req_info * req, char* buf)
 {
 	int rval = 0, max =1024, w = 0, i = 1;
@@ -60,7 +62,7 @@ void read_rest(int sock, Req_info * req, char* buf)
 			w += rval; 
 			if (w > (i*max)) {
 				i++;
-				if ( (buf = realloc(buf,(i*max))) == NULL) {
+				if ( (buf = realloc(buf,(i*max))) == NULL) {  
 					req->status = 500;
 					break;
 				}	
@@ -72,6 +74,7 @@ void read_rest(int sock, Req_info * req, char* buf)
 	}
 }
 
+/* deal with /../ situations */
 void process_dot_dot(char * dir)
 {
 	char * tmp, *tmp2;
@@ -106,6 +109,7 @@ void process_dot_dot(char * dir)
 			continue;
 	}
 }
+
 
 int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 {
@@ -152,6 +156,7 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 	return cgi;
 }
 
+/* parse first line*/
 int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 {	
 	char method[10], uri[256], version[20];
@@ -185,6 +190,7 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 		
 }
 
+
 void read_sock(int sock, Arg_t *optInfo)
 {
 	int w = 0, max=1024;
@@ -199,17 +205,21 @@ void read_sock(int sock, Arg_t *optInfo)
 	/* read first line*/
 	w = read_req_line(sock,&req,max,buf);
 	printf("first line: %s\n",buf);
-	
+	/* parse first line*/
 	parse_req_line(buf,&req,optInfo);
 	printf("status:%d\n",req.status);
 	
+	/* we may send out error response here*/
 	if (req.status != 200)
 		;//make_response(req.status);
 		
 	else{
+		/* get the rest of the request */
 		bzero(buf, max);
 		read_rest(sock,&req,buf);
 		printf("rest headers:%s\n",buf);
+		
+		/*TODO: Handle the request*/
 		//serve_request(&req);
 	}
 	free(buf);

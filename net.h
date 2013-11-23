@@ -9,6 +9,7 @@ typedef struct arg_t{
     char *ipAddr;    /* -i address */
     char *logFile;   /* -l file */
     char *port;	     /* -p port */
+    char *dir;       /* service directory*/
 }Arg_t;
 
 
@@ -19,6 +20,8 @@ typedef struct arg_t{
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <pwd.h>
+#include <uuid/uuid.h>
 #define WATCH(fmt, ...)							\
     if (DEBUG) printf(fmt, __VA_ARGS__);
 

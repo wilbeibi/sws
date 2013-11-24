@@ -64,12 +64,18 @@ int main(int argc, char *argv[])
     argc -= optind;
     argv += optind;
 
+    if (argc>1) {
+        usage(); return 0;
+    }
+    optInfo.dir=argv;
+
     server_listen(&optInfo);
 
     free(optInfo.cgiDir);
     free(optInfo.ipAddr);
     free(optInfo.logFile);
     free(optInfo.port);
+    free(optInfo.dir);
     
     exit( EXIT_SUCCESS );
 }

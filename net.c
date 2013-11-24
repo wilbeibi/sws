@@ -57,7 +57,7 @@ int server_listen( Arg_t *optInfo){
 
         Req_info req;
         struct timeval to;
-        struct fd_set rdy;
+        fd_set rdy;
 
         to.tv_sec=5;
         to.tv_usec=0;

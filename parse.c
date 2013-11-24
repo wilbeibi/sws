@@ -34,12 +34,10 @@ read_req_line(int sock, Req_info *req, char *buf)
 	        break;
 	    } else if (strcmp(buf,"\r\n") == 0){
 			continue;
-		}
-		else if(ret<2 || buf[ret-2] !='\r'|| ret > MAXBUF) {
+		} else if(ret<2 || buf[ret-2] !='\r'|| ret > MAXBUF) {
 			req->status=400;
 	         break;
-	    }
-		else
+	    } else
 			break;
 	}
 	if (req->status != 200)
@@ -243,7 +241,6 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     bzero(req->uri,256);
     bzero(version,20);
     sscanf(buf, "%s %s %s", method, req->uri, version);
-	
 
     if (strcmp(method, "GET")==0)
         req->method=GET;
@@ -256,6 +253,11 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         return -1;
     }
     
+    if (req->uri[0]==0) {
+        req->status=404;
+        return -1;
+    }
+
     if ((strcmp(version,"HTTP/0.9") != 0)
         && (strcmp(version,"HTTP/1.0") != 0)) {
         req->status = 505;    
@@ -274,7 +276,6 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 
     /* read first line*/
     ret=read_req_line(sock,req,buf);
-
     if (ret==-1) {
         err_response(sock, req);
         return;

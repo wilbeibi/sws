@@ -9,10 +9,10 @@
 
 void init_req(Req_info * req) 
 {
-	req->status = 200;
-	req->method = NOT_IMPLEMENTED;
-	req->cgi = NO_CGI;
-	req->uri = NULL;
+    req->status = 200;
+    req->method = NOT_IMPLEMENTED;
+    req->cgi = NO_CGI;
+    req->uri = NULL;
 }
 
 /**
@@ -24,102 +24,108 @@ void init_req(Req_info * req)
  *                [ Entity-Body ]
  */
 static int 
-read_req_line(int sock, Req_info *req, int max, char *buf)
+read_req_line(int sock, Req_info *req, char *buf)
 {
-    /**
-     * stt=0   meet other 
-     * stt=1   meet \r
-     * stt=2   meet \n after \r
-     */
     int ret=0;
-    int stt=0;
-    int ind=0;
 
-    char c;
-    while ((ret=read(sock, &c, 1))!=0) {
-        buf[ind++]=c;
-        if (ret==-1) {
-            req->status=500;
-            return -1;
-        }
-        if ((stt==0 && c=='\n') || (stt==1 && c!='\n') || stt==2) {
-            req->status=400;
-            return -1;
-        }
-        if (stt==0 && c=='\r') {
-            stt=1;
-            continue;
-        }
-        if (stt==1 && c=='\n') {
-            stt=2;
-            break;
-        }
-    }
-    if (stt!=2) {
+    if (ret=Readline(sock, buf)==-1) {
+        req->status=500;
+        return -1;
+    } else if (ret<2 || buf[ret-2]!='\r' || ret>MAXBUF) {
         req->status=400;
         return -1;
     }
 
-    return ind;
+    return ret;
 }
 
 // int read_req_line(int sock,Req_info * req,int max,char* buf)
 // {
-// 	int rval = 0, w=0;
-// 	char c;
-// 	while (w<max) {
-// 		rval = read(sock,&c,1);
-// 		if (rval == 1) {
-// 			if (c != '\n' &&  c!='\r')
-// 				buf[w++] = c;
-// 			else if ( w != 0)
-// 				break;
-// 		}
-// 		else if (rval == 0) 
-// 			break; /* EOF */	
-// 			
-// 		else if (rval == -1){
-// 			req->status = 500;
-// 			break;
-// 		}		
-// 	}
-// 	buf[w] = '\0';		
-// 	return w;
-// 	
+//     int rval = 0, w=0;
+//     char c;
+//     while (w<max) {
+//         rval = read(sock,&c,1);
+//         if (rval == 1) {
+//             if (c != '\n' &&  c!='\r')
+//                 buf[w++] = c;
+//             else if ( w != 0)
+//                 break;
+//         }
+//         else if (rval == 0) 
+//             break; /* EOF */    
+//             
+//         else if (rval == -1){
+//             req->status = 500;
+//             break;
+//         }        
+//     }
+//     buf[w] = '\0';        
+//     return w;
+//     
 // }
 
-void read_rest(int sock, Req_info * req, char* buf)
+/**
+ * read all rest content, including headers and entity-body, it should be parted
+ * into read_headers and read_body...
+ */
+static int
+read_rest(int sock, Req_info *req, char *buf)
 {
-	int rval = 0, max =1024, w = 0, i = 1;
-	char * tmp,tmpbuf[max];
-	
-	while(1) {		
-		rval = read(sock,tmpbuf,max);
-		if (rval == 0) {
-			break; /* EOF */
-		}
-		else if (rval == -1) {
-			req->status = 500;
-			break;
-		}
-		else {
-			w += rval; 
-			if (w > (i*max)) {
-				i++;
-				if ( (buf = realloc(buf,(i*max))) == NULL) {
-					req->status = 500;
-					break;
-				}	
-			}
-			sprintf(buf,"%s%s",buf,tmpbuf);
-			tmp=strstr(buf,"\r\n"); 
-			if (tmp != NULL && tmp == buf) /* direct CRLF after first line*/ 
-				break;
-			else if ( (tmp = strstr(buf,"\r\n\r\n")) != NULL) /* two CRLFs */
-				break;
-		}	
-	}
+    int ret;
+    int tot=0;
+
+    while ((ret=Readline(sock, buf))) {
+        if (ret==-1) {
+            req->status=500;
+            return ret;
+        }
+        if (ret>=MAXBUF) {
+            req->status=400;
+            return ret;
+        }
+        buf+=ret;
+        tot+=ret;
+        if (tot>=MAXBUF) {
+            req->status=400;
+            return ret;
+        }
+    }
+
+    return tot;
 }
+
+// void read_rest(int sock, Req_info * req, char* buf)
+// {
+//     int rval = 0, max =1024, w = 0, i = 1;
+//     char * tmp,tmpbuf[max];
+//     
+//     while(1) {        
+//         rval = read(sock,tmpbuf,max);
+//         if (rval == 0) {
+//             break; /* EOF */
+//         }
+//         else if (rval == -1) {
+//             req->status = 500;
+//             break;
+//         }
+//         else {
+//             w += rval; 
+//             if (w > (i*max)) {
+//                 i++;
+//                 if ( (buf = realloc(buf,(i*max))) == NULL) {
+//                     req->status = 500;
+//                     break;
+//                 }    
+//             }
+//             sprintf(buf,"%s%s",buf,tmpbuf);
+//             tmp=strstr(buf,"\r\n"); 
+//             if (tmp != NULL && tmp == buf) /* direct CRLF after first line*/ 
+//                 break;
+//             else if ( (tmp = strstr(buf,"\r\n\r\n")) != NULL) /* two CRLFs */
+//                 break;
+//         }    
+//     }
+// }
 
 /**
  * We only need to implement [ path ], at this point, uri doesn't contain SP
@@ -132,25 +138,25 @@ void read_rest(int sock, Req_info * req, char* buf)
  */
 int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
 {
-	char * tmp = src;
-	char usr[256];
-	char rest[256];
-	int i;
+    char * tmp = src;
+    char usr[256];
+    char rest[256];
+    int i;
 
-	if (src[0] != '/') {
-		req->status = 400;
+    if (src[0] != '/') {
+        req->status = 400;
         return -1;
     }
-		
+        
     strncpy(req->uri, src, strlen(src));
 
-	if (strncmp(src,"/~",2) == 0) {
-		tmp += 2;
-		i = 0;
-		while (*tmp != '/' && *tmp != '\0') {
-			usr[i++] = *tmp++;
-		}
-		usr[i]='\0';
+    if (strncmp(src,"/~",2) == 0) {
+        tmp += 2;
+        i = 0;
+        while (*tmp != '/' && *tmp != '\0') {
+            usr[i++] = *tmp++;
+        }
+        usr[i]='\0';
         /* if user not exist, return 400 */
         struct passwd *pwd;
         if ((pwd=getpwnam(usr))==NULL) {
@@ -158,19 +164,19 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
             return -1;
         }
         free(pwd);
-		strncpy(rest,tmp,256);
-		sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
-			
-	}
+        strncpy(rest,tmp,256);
+        sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
+            
+    }
 
     req->cgi=NO_CGI;
-	if (strncmp(src,"/cgi-bin/",9) == 0) {
+    if (strncmp(src,"/cgi-bin/",9) == 0) {
         req->cgi=DO_CGI;
-		tmp = src;
-		tmp += 9;
-		strncpy(rest,tmp,256);
-		sprintf(req->uri,"%s%s",optInfo->cgiDir,tmp);
-	}
+        tmp = src;
+        tmp += 9;
+        strncpy(rest,tmp,256);
+        sprintf(req->uri,"%s%s",optInfo->cgiDir,tmp);
+    }
 
     /* path convertion, first tokenize, then combine up */
     char tos[256][256];
@@ -220,14 +226,14 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
  * extension-method = token
  */
 int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
-{	
+{    
     int ret;
-	char method[10], uri[256], version[20];
-	
-	bzero(method,10);
-	bzero(uri,256);
-	bzero(version,20);
-	sscanf(buf, "%s %s %s", method, uri, version);
+    char method[10], uri[256], version[20];
+    
+    bzero(method,10);
+    bzero(uri,256);
+    bzero(version,20);
+    sscanf(buf, "%s %s %s", method, uri, version);
 
     if (strcmp(method, "GET")==0)
         req->method=GET;
@@ -240,56 +246,66 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         return -1;
     }
 
-	// if (strcasecmp(method, "GET")==0) {
-	// 	req->method = GET;	
-	// }else if (strcasecmp(method, "POST")==0)
-	// 	req->method = POST;
-	// else if (strcasecmp(method, "HEAD")==0)
-	// 	req->method = HEAD;
-	// else{
-	// 	req->status = 501;	
-	// 	return -1;
-	// }
-	
-	if ((strcasecmp(version,"HTTP/0.9") != 0) && (strcasecmp(version,"HTTP/1.0") != 0)) {
-		req->status = 505;	
-		return -1;
-	}
-	
-	return 0;
+    // if (strcasecmp(method, "GET")==0) {
+    //     req->method = GET;    
+    // }else if (strcasecmp(method, "POST")==0)
+    //     req->method = POST;
+    // else if (strcasecmp(method, "HEAD")==0)
+    //     req->method = HEAD;
+    // else{
+    //     req->status = 501;    
+    //     return -1;
+    // }
+    
+    if ((strcasecmp(version,"HTTP/0.9") != 0)
+        && (strcasecmp(version,"HTTP/1.0") != 0)) {
+        req->status = 505;    
+        return -1;
+    }
+    
+    return 0;
 }
 
-void read_sock(int sock, Arg_t *optInfo)
+void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
-	int w = 0, max=1024;
     int ret;
-	char buf[max];
-	Req_info  req;
-	
-	init_req(&req);
+    char buf[MAXBUF];
+    
+    init_req(req);
 
-	/* read first line*/
-	w = read_req_line(sock,&req,max,buf);
-    if (w==-1)
-        // TODO make_response;
+    /* read first line*/
+    ret=read_req_line(sock,req,buf);
+    if (ret==-1) {
+        err_response(sock, req);
+        return;
+    }
 
-	printf("first line: %s\n",buf);
-	
-	ret=parse_req_line(buf,&req,optInfo);
-    if (ret==-1)
-        // TODO make_response;
-		
-    ret=parse_uri(req.uri, optInfo);
-    if (ret==-1)
-        // TODO make_response;
+    printf("first line: %s\n",buf);
+    
+    ret=parse_req_line(buf,req,optInfo);
+    if (ret==-1) {
+        err_response(sock, req);
+        return;
+    }
+        
+    ret=parse_uri(req->uri, optInfo);
+    if (ret==-1) {
+        err_response(sock, req);
+        return;
+    }
 
-	else{
-		bzero(buf, max);
-		read_rest(sock,&req,buf);
-		
-		//serve_request(&req);
-	}
-	free(buf);
+
+    /**
+     * at this point, buf only contains request-line and the position is at
+     * buf[0] because we didn't do buf+=w+1. so read_rest will override
+     * request-line, which is acceptable here.
+     */
+    bzero(buf, MAXBUF);
+    ret=read_rest(sock,req,buf);
+    if (ret==-1) {
+        err_response(sock, req);
+        return;
+    }
+
+    //serve_request(req);
 }
-
-

@@ -16,6 +16,6 @@ typedef struct req_info {
 	char uri[256];
 }Req_info;
 
-void read_sock(int sock, Arg_t *optInfo);
+void read_sock(int sock, Req_info *req, Arg_t *optInfo);
 
 #endif

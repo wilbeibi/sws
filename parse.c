@@ -243,6 +243,7 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     bzero(req->uri,256);
     bzero(version,20);
     sscanf(buf, "%s %s %s", method, req->uri, version);
+	
 
     if (strcmp(method, "GET")==0)
         req->method=GET;
@@ -255,8 +256,8 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         return -1;
     }
     
-    if ((strcasecmp(version,"HTTP/0.9") != 0)
-        && (strcasecmp(version,"HTTP/1.0") != 0)) {
+    if ((strcmp(version,"HTTP/0.9") != 0)
+        && (strcmp(version,"HTTP/1.0") != 0)) {
         req->status = 505;    
         return -1;
     }
@@ -303,7 +304,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         err_response(sock, req);
         return;
     }
-
+	err_response(sock, req);
 	
     //serve_request(req);
 	return;
@@ -313,17 +314,16 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 void err_response(int fd, Req_info *req) {
 	char buf[MAXBUF], body[MAXBUF], msg[LINESIZE];
 	get_status_msg(req->status, msg);
-
+	sprintf(body, "<!DOCTYPE html><html><title>SWS Error</title>\r\n");
+	sprintf(body, "%s<body>%d: %s\r\n", body, req->status, msg);
+	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
+	
 	sprintf(buf, "HTTP/1.0 %d %s\r\n", req->status, msg);
 	Send(fd, buf, strlen(buf),0);
 	sprintf(buf, "Content-type: text/html\r\n");
 	Send(fd, buf, strlen(buf),0);
 	sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
 	Send(fd, buf, strlen(buf),0);
-	
-	sprintf(body, "<html><title>SWS Error</title>\r\n");
-	sprintf(body, "<body>%s%d: %s\r\n", body, req->status, msg);
-	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
 	Send(fd, body, strlen(body),0);
 }
 

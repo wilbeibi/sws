@@ -1,6 +1,8 @@
 /* $$ main.c
  * 
  */
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +23,8 @@ int main(int argc, char *argv[])
     int opt = 0;
     Arg_t optInfo;
     progname = argv[0];
-    
+    struct stat st;
+
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
     optInfo.logFile = NULL;
@@ -64,9 +67,17 @@ int main(int argc, char *argv[])
     if (argc>1) {
         usage(); return 0;
     }
-    optInfo.dir= *argv;
-	//Chroot(optInfo.dir);
-	
+
+	if (*argv == NULL)
+		usage();
+	else {
+		optInfo.dir= *argv;
+		if (lstat(optInfo.dir, &st) == -1) 
+			sys_err(optInfo.dir);
+		if ( !(st.st_mode & S_IFDIR ))
+			sys_err("Invalid server root. Not a dir");
+	}
+  		
     server_listen(&optInfo);
 
     free(optInfo.cgiDir);
@@ -79,7 +90,7 @@ int main(int argc, char *argv[])
 }
 
 static void usage(){
-    fprintf(stderr, "usage: %s <cdhilp>\n \
+    fprintf(stderr, "usage: %s <cdhilp> dir\n \
            -c dir Allow execution of CGIs from the given directory.\n \
            -d Enter debugging mode.\n \
            -h Print a short usage summary and exit.\n \

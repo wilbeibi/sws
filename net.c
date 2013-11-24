@@ -68,11 +68,9 @@ int server_listen( Arg_t *optInfo){
         int ret=select(listenfd+1, &rdy, 0, 0, &to);
         if (ret==-1) {
             req.status=500;
-            err_response(listenfd, &req);
             continue;
         } else if (ret==0) {
             req.status=502;
-            err_response(listenfd, &req);
             continue;
         } else if (FD_ISSET(listenfd, &rdy)==0) {
             // do some fun stuff...
@@ -87,6 +85,7 @@ int server_listen( Arg_t *optInfo){
 			Close(listenfd);
 			Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
 			read_sock(connfd, &req, optInfo);	
+		
 			exit(0);
 		}else {
 			Signal(SIGCHLD, child_handler);

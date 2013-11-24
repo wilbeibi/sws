@@ -13,7 +13,6 @@ typedef struct arg_t{
 }Arg_t;
 
 
-
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -28,6 +27,7 @@ typedef struct arg_t{
 #define SIZE 1024
 #define LISTENQ 10
 #define MAXBUF 8192
+#define LINESIZE 8192 
 /* typedef struct sockaddr SA; */
 
 
@@ -49,9 +49,10 @@ const char *Inet_ntop(int family, const void *addrptr, char *strptr, size_t len)
 int Getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints, struct addrinfo **res);
 ssize_t Read(int fd, void *buf, size_t count);
 ssize_t Write(int fd, const void *buf, size_t count);
+ssize_t Send(int sock, const void *buf, size_t count,int flag);
 sig_t Signal(int sig, sig_t func);
 int Readline(int fd, char* buf);
-
+void Chroot(char * dir);
 
 
 /****************************************
@@ -59,5 +60,8 @@ int Readline(int fd, char* buf);
  ****************************************/
 
 int server_listen(Arg_t *optInfo);
+
+
+
 
 #endif	/* _NET_H_ */

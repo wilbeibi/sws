@@ -25,10 +25,7 @@ int main(int argc, char *argv[])
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
     optInfo.logFile = NULL;
-    optInfo.port = "8080";
-    
-    
-   
+    optInfo.port = "8080"; 
     
     const char *optString = "c:dhi:l:p:";
     char *endptr;
@@ -67,8 +64,9 @@ int main(int argc, char *argv[])
     if (argc>1) {
         usage(); return 0;
     }
-    optInfo.dir=argv;
-
+    optInfo.dir= *argv;
+	//Chroot(optInfo.dir);
+	
     server_listen(&optInfo);
 
     free(optInfo.cgiDir);

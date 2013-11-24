@@ -94,7 +94,7 @@ int Getaddrinfo(const char *hostname, const char *servname, const struct addrinf
 ssize_t Read(int fd, void *buf, size_t count){
     int n;
     if ((n = read(fd, buf, count)) < 0)
-		fprintf(stderr, "Read warning: %s.\n", strerror());
+		fprintf(stderr, "Read warning: %s.\n", strerror(errno));
     return (n);
 }
 
@@ -105,6 +105,12 @@ ssize_t Write(int fd, const void *buf, size_t count){
     return (n);
 }
 
+ssize_t Send(int sock, const void *buf, size_t count, int flag){
+    int n;
+    if ((n = send(sock, buf, count,flag)) < 0)
+		fprintf(stderr, "Send warning: %s.\n", strerror(errno));
+    return (n);
+}
 sig_t Signal(int sig, sig_t func){
     sig_t s;
     if((s = signal(sig, func)) == SIG_ERR)
@@ -130,6 +136,8 @@ int Readline(int fd, char* buf)
 		} else
 			return -1;	    /* error */
     }
-    *bufp = 0;		    	/* append '\0' */
+    *bufp = '\0';		    	/* append '\0' */
     return n;
 }
+
+

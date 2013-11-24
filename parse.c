@@ -6,13 +6,14 @@
 #include "net.h"
 #include "parse.h"
 
+void err_response(int fd, Req_info *req);
+void get_status_msg(int code, char msg[]);
 
 void init_req(Req_info * req) 
 {
     req->status = 200;
     req->method = NOT_IMPLEMENTED;
     req->cgi = NO_CGI;
-    req->uri = NULL;
 }
 
 /**
@@ -26,16 +27,24 @@ void init_req(Req_info * req)
 static int 
 read_req_line(int sock, Req_info *req, char *buf)
 {
-    int ret=0;
-
-    if (ret=Readline(sock, buf)==-1) {
-        req->status=500;
-        return -1;
-    } else if (ret<2 || buf[ret-2]!='\r' || ret>MAXBUF) {
-        req->status=400;
-        return -1;
-    }
-
+    int ret=0;	
+	while(1) {
+		if ((ret=Readline(sock, buf))==-1) {
+	        req->status=500;
+	        break;
+	    } else if (strcmp(buf,"\r\n") == 0){
+			continue;
+		}
+		else if(ret<2 || buf[ret-2] !='\r'|| ret > MAXBUF) {
+			req->status=400;
+	         break;
+	    }
+		else
+			break;
+	}
+	if (req->status != 200)
+		return -1;
+		
     return ret;
 }
 
@@ -73,8 +82,8 @@ read_rest(int sock, Req_info *req, char *buf)
 {
     int ret;
     int tot=0;
-
-    while ((ret=Readline(sock, buf))) {
+	char * tmp = buf;
+    while ((ret=Readline(sock, tmp))) {
         if (ret==-1) {
             req->status=500;
             return ret;
@@ -83,14 +92,17 @@ read_rest(int sock, Req_info *req, char *buf)
             req->status=400;
             return ret;
         }
-        buf+=ret;
+        tmp+=ret;
         tot+=ret;
         if (tot>=MAXBUF) {
             req->status=400;
             return ret;
         }
+		if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
+			break;
+		if (strcmp(tmp-4,"\r\n\r\n") == 0)
+			break;
     }
-
     return tot;
 }
 
@@ -136,21 +148,19 @@ read_rest(int sock, Req_info *req, char *buf)
  * fsegment         = 1*pchar
  * segment          = *pchar
  */
-int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
+int parse_uri(Req_info * req, Arg_t *optInfo)
 {
-    char * tmp = src;
+    char * tmp = req->uri;
     char usr[256];
     char rest[256];
     int i;
 
-    if (src[0] != '/') {
+    if (req->uri[0] != '/') {
         req->status = 400;
         return -1;
     }
-        
-    strncpy(req->uri, src, strlen(src));
 
-    if (strncmp(src,"/~",2) == 0) {
+    if (strncmp(req->uri,"/~",2) == 0) {
         tmp += 2;
         i = 0;
         while (*tmp != '/' && *tmp != '\0') {
@@ -170,9 +180,9 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
     }
 
     req->cgi=NO_CGI;
-    if (strncmp(src,"/cgi-bin/",9) == 0) {
+    if (strncmp(req->uri,"/cgi-bin/",9) == 0) {
         req->cgi=DO_CGI;
-        tmp = src;
+        tmp = req->uri;
         tmp += 9;
         strncpy(rest,tmp,256);
         sprintf(req->uri,"%s%s",optInfo->cgiDir,tmp);
@@ -227,13 +237,12 @@ int parse_uri(char * src, Req_info * req, Arg_t *optInfo)
  */
 int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 {    
-    int ret;
-    char method[10], uri[256], version[20];
+    char method[10], version[20];
     
     bzero(method,10);
-    bzero(uri,256);
+    bzero(req->uri,256);
     bzero(version,20);
-    sscanf(buf, "%s %s %s", method, uri, version);
+    sscanf(buf, "%s %s %s", method, req->uri, version);
 
     if (strcmp(method, "GET")==0)
         req->method=GET;
@@ -245,17 +254,6 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         req->status=501;
         return -1;
     }
-
-    // if (strcasecmp(method, "GET")==0) {
-    //     req->method = GET;    
-    // }else if (strcasecmp(method, "POST")==0)
-    //     req->method = POST;
-    // else if (strcasecmp(method, "HEAD")==0)
-    //     req->method = HEAD;
-    // else{
-    //     req->status = 501;    
-    //     return -1;
-    // }
     
     if ((strcasecmp(version,"HTTP/0.9") != 0)
         && (strcasecmp(version,"HTTP/1.0") != 0)) {
@@ -275,6 +273,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 
     /* read first line*/
     ret=read_req_line(sock,req,buf);
+
     if (ret==-1) {
         err_response(sock, req);
         return;
@@ -288,13 +287,11 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         return;
     }
         
-    ret=parse_uri(req->uri, optInfo);
+    ret=parse_uri(req, optInfo);
     if (ret==-1) {
         err_response(sock, req);
         return;
     }
-
-
     /**
      * at this point, buf only contains request-line and the position is at
      * buf[0] because we didn't do buf+=w+1. so read_rest will override
@@ -307,23 +304,27 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         return;
     }
 
+	
     //serve_request(req);
+	return;
 }
 
-void err_response(int fd, Req_info *req) {
-	char buf[BUFSIZE], body[BUFSIZE], msg[LINESIZE];
-	get_status_msg(req->status, msg);
-	sprinf(body, "<html><title>SWS Error</title>\r\n");
-	sprinf(body, "<body>%s%s: %s\r\n", body, req->status, msg);
-	sprinf(body, "%s May the force be with you.</body></html>\r\n", body);
 
-	sprinf(buf, "HTTP/1.0 %s %s\r\n", req->status, msg);
-	Send(fd, buf, strlen(buf));
-	sprinf(buf, "Content-type: text/html\r\n");
-	Send(fd, buf, strlen(buf));
-	sprinf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
-	Send(fd, buf, strlen(buf));
-	Send(fd, body, strlen(body));
+void err_response(int fd, Req_info *req) {
+	char buf[MAXBUF], body[MAXBUF], msg[LINESIZE];
+	get_status_msg(req->status, msg);
+
+	sprintf(buf, "HTTP/1.0 %d %s\r\n", req->status, msg);
+	Send(fd, buf, strlen(buf),0);
+	sprintf(buf, "Content-type: text/html\r\n");
+	Send(fd, buf, strlen(buf),0);
+	sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
+	Send(fd, buf, strlen(buf),0);
+	
+	sprintf(body, "<html><title>SWS Error</title>\r\n");
+	sprintf(body, "<body>%s%d: %s\r\n", body, req->status, msg);
+	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
+	Send(fd, body, strlen(body),0);
 }
 
 void get_status_msg(int code, char msg[]) {
@@ -352,3 +353,4 @@ void get_status_msg(int code, char msg[]) {
 		break;
 	}
 }
+

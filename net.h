@@ -27,7 +27,7 @@ typedef struct arg_t{
 
 #define SIZE 1024
 #define LISTENQ 10
-
+#define MAXBUF 8192
 /* typedef struct sockaddr SA; */
 
 

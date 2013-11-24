@@ -9,9 +9,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 #include "net.h"
 #include "parse.h"
@@ -52,6 +54,31 @@ int server_listen( Arg_t *optInfo){
 		struct sockaddr_in* cliAdr = (struct sockaddr_in*)&client_addr;
 		int ipAddr = cliAdr->sin_addr.s_addr;
 		clientlen = sizeof(client_addr);
+
+        Req_info req;
+        struct timeval to;
+        struct fd_set rdy;
+
+        to.tv_sec=5;
+        to.tv_usec=0;
+
+        FD_ZERO(&rdy);
+        FD_SET(listenfd, &rdy);
+
+        int ret=select(listenfd+1, &rdy, 0, 0, &to);
+        if (ret==-1) {
+            req->status=500;
+            err_response(listenfd, req);
+            continue;
+        } else if (ret==0) {
+            req->status=502;
+            err_response(listenfd, req);
+            continue;
+        } else if (FD_ISSET(listenfd, &rdy)==0) {
+            // do some fun stuff...
+            continue;
+        }
+
 		connfd = Accept(listenfd, (struct sockaddr *) &client_addr, &clientlen);
 		printf ("Server is up on port:%s.\n", optInfo->port);
 	
@@ -64,7 +91,7 @@ int server_listen( Arg_t *optInfo){
 			// 	printf("Client %s --> %s", ipstr, readbuf);
 			// 	bzero(readbuf, SIZE);
 			// }
-			read_sock(connfd,optInfo);
+			read_sock(connfd, &req, optInfo);
 			
 			exit(0);
 		}else {

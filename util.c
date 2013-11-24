@@ -1,6 +1,7 @@
 /* $$ util.c
  * Stolen the idea from UNP
  */
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 #include <arpa/inet.h>
 
 #include "net.h" 
-
+#include "parse.h"
 void sys_err(const char *msg){
     perror(msg);
     exit( EXIT_FAILURE );
@@ -93,14 +94,14 @@ int Getaddrinfo(const char *hostname, const char *servname, const struct addrinf
 ssize_t Read(int fd, void *buf, size_t count){
     int n;
     if ((n = read(fd, buf, count)) < 0)
-		sys_err("read error");
+		fprintf(stderr, "Read warning: %s.\n", strerror());
     return (n);
 }
 
 ssize_t Write(int fd, const void *buf, size_t count){
     int n;
     if ((n = write(fd, buf, count)) < 0)
-		sys_err("write error");
+		fprintf(stderr, "Write warning: %s.\n", strerror(errno));
     return (n);
 }
 
@@ -109,4 +110,26 @@ sig_t Signal(int sig, sig_t func){
     if((s = signal(sig, func)) == SIG_ERR)
 		sys_err("signal child error");
     return (s);
+}
+
+int Readline(int fd, char* buf)
+{
+    int n, rc;
+    char c, *bufp = buf;
+ 
+    for (n = 1; n < MAXBUF; n++) { 
+		if ((rc = read(fd, &c, 1)) == 1) {
+			*bufp++ = c;
+			if (c == '\n')
+				break;
+		} else if (rc == 0) {
+			if (n == 1)
+				return 0;   /* EOF, no data read */
+			else
+				break;      /* EOF, some data was read */
+		} else
+			return -1;	    /* error */
+    }
+    *bufp = 0;		    	/* append '\0' */
+    return n;
 }

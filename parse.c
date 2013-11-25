@@ -66,7 +66,7 @@ read_req_line(int sock, Req_info *req, char *buf)
 
 /**
  * read all rest content, including headers and entity-body, it should be parted
- * into read_headers and read_body...
+ * into read_headers and read_body...but we read headeers only now.
  */
 static int
 read_rest(int sock, Req_info *req, char *buf)
@@ -113,29 +113,37 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     char usr[256];
     char rest[256];
     int i;
-
+	
+	/* http://babla. shoudl also be valid
     if (req->uri[0] != '/') {
-        req->status = 400;
+        req->status = 404;
         return -1;
     }
-
-    if (strncmp(req->uri,"/~",2) == 0) {
-        tmp += 2;
+	*/
+	
+	/* According to sws man page, request for user home should start with '~'  */
+    if (strncmp(req->uri,"~",1) == 0) {
+        tmp += 1;
         i = 0;
-        while (*tmp != '/' && *tmp != '\0') {
+        while (*tmp != '/' ) {
+		/* there must be a slash after the user name, otherwise it's invalid*/
+			if ( *tmp == '\0') {
+				 req->status=404;
+		            return -1;	
+			}
             usr[i++] = *tmp++;
         }
         usr[i]='\0';
-        /* if user not exist, return 400 */
+		
+        /* if user not exist, return 404 */
         struct passwd *pwd;
         if ((pwd=getpwnam(usr))==NULL) {
-            req->status=400;
+            req->status=404;
             return -1;
-        }
-        free(pwd);
-        strncpy(rest,tmp,256);
+        }      
+        strncpy(rest,tmp+1,256);
         sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
-            
+ 
     }
 
     req->cgi=NO_CGI;
@@ -143,10 +151,12 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         req->cgi=DO_CGI;
         tmp = req->uri;
         tmp += 9;
-        strncpy(rest,tmp,256);
-        sprintf(req->uri,"%s%s",optInfo->cgiDir,tmp);
-    }
+		strncpy(rest,tmp,256);
+		if (optInfo->cgiDir != NULL)
+        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest);
 
+    }
+	
     /* path convertion, first tokenize, then combine up */
     char buf[256];
     char temp[256];
@@ -178,7 +188,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         ind=0;
     }
     strncpy(req->uri, buf, strlen(buf));
-
+	
     return 0;
 }
 
@@ -240,7 +250,7 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     }
 
     if (req->uri[0]==0) {
-        req->status=404;
+        req->status=400;
         return -1;
     }
     
@@ -270,12 +280,13 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         err_response(sock, req->status);
         return;
     }
-        
+
     ret=parse_uri(req, optInfo);
     if (ret==-1) {
         err_response(sock, req->status);
         return;
     }
+
     /**
      * at this point, buf only contains request-line and the position is at
      * buf[0] because we didn't do buf+=w+1. so read_rest will override

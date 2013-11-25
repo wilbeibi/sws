@@ -14,16 +14,47 @@
 
 
 #define DEBUG 1
-
+#define DIR 1
+#define FILE 2
 static void usage();
 static char *progname;
+
+
+static void check_path(char * path, int type)
+{
+	struct stat st;
+	char * tmp;
+	if (path != NULL){
+		if (lstat(path, &st) == -1) 
+			sys_err(path);
+			
+		if (type == DIR) {
+			if ( !(st.st_mode & S_IFDIR ))
+				sys_err("Invalid path. Not a dir");
+			/* add '/' if there isn't one in the end of the dir */
+			tmp = path;
+			while (*tmp != '\0')
+				tmp++;
+			if (*(tmp-1) != '/') {
+				*(tmp) = '/';
+				*(tmp+1) = '\0';
+			}
+				
+		}
+		else if (type == FILE) {
+			if ( !(st.st_mode & S_IFREG ))
+				sys_err("Invalid path. Not a file");
+		}		
+	}
+	
+}
 
 int main(int argc, char *argv[])
 {
     int opt = 0;
     Arg_t optInfo;
     progname = argv[0];
-    struct stat st;
+    
 
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
@@ -71,11 +102,11 @@ int main(int argc, char *argv[])
 	if (*argv == NULL)
 		usage();
 	else {
+		/* check all paths from getopt is valid*/
 		optInfo.dir= *argv;
-		if (lstat(optInfo.dir, &st) == -1) 
-			sys_err(optInfo.dir);
-		if ( !(st.st_mode & S_IFDIR ))
-			sys_err("Invalid server root. Not a dir");
+		check_path(optInfo.dir,DIR);
+		check_path(optInfo.cgiDir,DIR);
+		check_path(optInfo.logFile,FILE);
 	}
   		
     server_listen(&optInfo);

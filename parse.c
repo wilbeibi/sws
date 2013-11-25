@@ -23,7 +23,7 @@ wt_timeout(int sig) {
     exit(0);
 }
 
-void err_response(int fd, Req_info *req);
+void err_response(int fd, int status);
 void get_status_msg(int code, char msg[]);
 
 void init_req(Req_info * req) 
@@ -63,31 +63,6 @@ read_req_line(int sock, Req_info *req, char *buf)
     return ret;
 }
 
-// int read_req_line(int sock,Req_info * req,int max,char* buf)
-// {
-//     int rval = 0, w=0;
-//     char c;
-//     while (w<max) {
-//         rval = read(sock,&c,1);
-//         if (rval == 1) {
-//             if (c != '\n' &&  c!='\r')
-//                 buf[w++] = c;
-//             else if ( w != 0)
-//                 break;
-//         }
-//         else if (rval == 0) 
-//             break; /* EOF */    
-//             
-//         else if (rval == -1){
-//             req->status = 500;
-//             break;
-//         }        
-//     }
-//     buf[w] = '\0';        
-//     return w;
-//     
-// }
-
 /**
  * read all rest content, including headers and entity-body, it should be parted
  * into read_headers and read_body...
@@ -121,38 +96,6 @@ read_rest(int sock, Req_info *req, char *buf)
     return tot;
 }
 
-// void read_rest(int sock, Req_info * req, char* buf)
-// {
-//     int rval = 0, max =1024, w = 0, i = 1;
-//     char * tmp,tmpbuf[max];
-//     
-//     while(1) {        
-//         rval = read(sock,tmpbuf,max);
-//         if (rval == 0) {
-//             break; /* EOF */
-//         }
-//         else if (rval == -1) {
-//             req->status = 500;
-//             break;
-//         }
-//         else {
-//             w += rval; 
-//             if (w > (i*max)) {
-//                 i++;
-//                 if ( (buf = realloc(buf,(i*max))) == NULL) {
-//                     req->status = 500;
-//                     break;
-//                 }    
-//             }
-//             sprintf(buf,"%s%s",buf,tmpbuf);
-//             tmp=strstr(buf,"\r\n"); 
-//             if (tmp != NULL && tmp == buf) /* direct CRLF after first line*/ 
-//                 break;
-//             else if ( (tmp = strstr(buf,"\r\n\r\n")) != NULL) /* two CRLFs */
-//                 break;
-//         }    
-//     }
-// }
 
 /**
  * We only need to implement [ path ], at this point, uri doesn't contain SP
@@ -287,8 +230,8 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
     _sock=sock;
-    signal(SIG_ALRM, rd_timeout);
-    alarm(READ_TIMOUT);
+    signal(SIGALRM, rd_timeout);
+    alarm(READ_TIMEOUT);
 
     int ret;
     char buf[MAXBUF];
@@ -298,7 +241,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     /* read first line*/
     ret=read_req_line(sock,req,buf);
     if (ret==-1) {
-        err_response(sock, req);
+        err_response(sock, req->status);
         return;
     }
 
@@ -306,13 +249,13 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     
     ret=parse_req_line(buf,req,optInfo);
     if (ret==-1) {
-        err_response(sock, req);
+        err_response(sock, req->status);
         return;
     }
         
     ret=parse_uri(req, optInfo);
     if (ret==-1) {
-        err_response(sock, req);
+        err_response(sock, req->status);
         return;
     }
     /**
@@ -323,12 +266,12 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     bzero(buf, MAXBUF);
     ret=read_rest(sock,req,buf);
     if (ret==-1) {
-        err_response(sock, req);
+        err_response(sock, req->status);
         return;
     }
-	err_response(sock, req);
+	err_response(sock, req->status);
 	
-    signal(SIG_ALRM, wt_timeout);
+    signal(SIGALRM, wt_timeout);
     alarm(0);
     alarm(WRITE_TIMEOUT);
 
@@ -337,14 +280,14 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 }
 
 
-void err_response(int fd, Req_info *req) {
+void err_response(int fd, int status) {
 	char buf[MAXBUF], body[MAXBUF], msg[LINESIZE];
-	get_status_msg(req->status, msg);
+	get_status_msg(status, msg);
 	sprintf(body, "<!DOCTYPE html><html><title>SWS Error</title>\r\n");
-	sprintf(body, "%s<body>%d: %s\r\n", body, req->status, msg);
+	sprintf(body, "%s<body>%d: %s\r\n", body, status, msg);
 	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
 	
-	sprintf(buf, "HTTP/1.0 %d %s\r\n", req->status, msg);
+	sprintf(buf, "HTTP/1.0 %d %s\r\n", status, msg);
 	Send(fd, buf, strlen(buf),0);
 	sprintf(buf, "Content-type: text/html\r\n");
 	Send(fd, buf, strlen(buf),0);
@@ -364,6 +307,9 @@ void get_status_msg(int code, char msg[]) {
 		break;
 	case 404:
 		strcpy(msg, "Not Found");
+		break;
+	case 408:
+		strcpy(msg, "Request Timeout");
 		break;
 	case 501:
 		strcpy(msg, "Not Implemented");

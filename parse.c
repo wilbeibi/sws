@@ -165,6 +165,8 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     char *bufp=buf;
     int ind=0;
     int len=strlen(req->uri);
+    buf[0]='/';
+    buf[1]=0;
     for (int i=0; i<len; i++) {
         while (i<len && req->uri[i]=='/') i++; 
         while (i<len && req->uri[i]!='/') temp[ind++]=req->uri[i++];

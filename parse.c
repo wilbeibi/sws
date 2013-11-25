@@ -218,9 +218,23 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         return -1;
     }
 
-    if ((strcmp(version,"HTTP/0.9") != 0)
-        && (strcmp(version,"HTTP/1.0") != 0)) {
-        req->status = 505;    
+    if (version[0]==0) {
+        // version is not specified, use HTTP/1.0
+    } else {
+        char *http=strstr(version, "HTTP/");
+        if (http==NULL || http!=version) {
+            req->status=400;
+            return -1;
+        }
+        http+=5;
+        int major=-1;
+        int minor=-1;
+        sscanf(http, "%d.%d", &major, &minor);
+        if ((major==1 && minor==0)
+            || (major==0 && minor==9)) {
+            return 0;
+        }
+        req->status=400;
         return -1;
     }
     

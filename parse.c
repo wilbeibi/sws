@@ -212,15 +212,10 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         req->status=501;
         return -1;
     }
-    
-    if (req->uri[0]==0) {
-        req->status=404;
-        return -1;
-    }
 
     if (version[0]==0) {
         // version is not specified, if is GET, validate it as HTTP/0.9 Simple request
-		if (req->method == GET)
+		if ((req->method == GET) && req->uri[0] != '\0')
 			_simple_response = 1;
 		else {
 			req->status=400;
@@ -241,6 +236,11 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
             return 0;
         }
         req->status=505;
+        return -1;
+    }
+
+    if (req->uri[0]==0) {
+        req->status=404;
         return -1;
     }
     
@@ -264,9 +264,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         err_response(sock, req->status);
         return;
     }
-
-    printf("first line: %s\n",buf);
-    
+   
     ret=parse_req_line(buf,req,optInfo);
     if (ret==-1) {
         err_response(sock, req->status);

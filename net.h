@@ -13,6 +13,8 @@ typedef struct arg_t{
 }Arg_t;
 
 
+
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -20,7 +22,19 @@ typedef struct arg_t{
 #include <arpa/inet.h>
 #include <signal.h>
 #include <pwd.h>
+
+#ifdef __APPLE__
 #include <uuid/uuid.h>
+#endif
+/*
+#elif __linux
+// linux
+#elif __unix // all unices not caught above
+// Unix
+#elif __posix
+// POSIX
+#endif
+*/
 #define WATCH(fmt, ...)							\
     if (DEBUG) printf(fmt, __VA_ARGS__);
 

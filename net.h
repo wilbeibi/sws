@@ -28,6 +28,8 @@ typedef struct arg_t{
 #define LISTENQ 10
 #define MAXBUF 8192
 #define LINESIZE 8192 
+#define READ_TIMEOUT 60
+#define WRITE_TIMEOUT 120
 /* typedef struct sockaddr SA; */
 
 

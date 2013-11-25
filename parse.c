@@ -6,6 +6,23 @@
 #include "net.h"
 #include "parse.h"
 
+/* TODO currently global, any further advices? */
+static int _sock;
+
+static void
+rd_timeout(int sig) {
+    // response to client of 408?
+    // log warn: read timeout
+    err_response(_sock, 408);
+    exit(0);
+}
+
+static void
+wt_timeout(int sig) {
+    // log warn: write timeout
+    exit(0);
+}
+
 void err_response(int fd, Req_info *req);
 void get_status_msg(int code, char msg[]);
 
@@ -269,6 +286,10 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
+    _sock=sock;
+    signal(SIG_ALRM, rd_timeout);
+    alarm(READ_TIMOUT);
+
     int ret;
     char buf[MAXBUF];
     
@@ -307,8 +328,12 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     }
 	err_response(sock, req);
 	
+    signal(SIG_ALRM, wt_timeout);
+    alarm(0);
+    alarm(WRITE_TIMEOUT);
+
     //serve_request(req);
-	return;
+    return;
 }
 
 

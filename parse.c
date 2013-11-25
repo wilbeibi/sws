@@ -9,6 +9,7 @@
 /* TODO currently global, any further advices? */
 static int _sock;
 static int _simple_response;
+static int _head_response;
 
 static void
 rd_timeout(int sig) {
@@ -212,12 +213,14 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     bzero(version,20);
     sscanf(buf, "%s %s %s", method, req->uri, version);
 
-    if (strcmp(method, "GET")==0)
+    if (strcmp(method, "GET") == 0)
         req->method=GET;
-    else if (strcmp(method, "POST")==0)
+    else if (strcmp(method, "POST") == 0)
         req->method=POST;
-    else if (strcmp(method, "HEAD")==0)
-        req->method=HEAD;
+    else if (strcmp(method, "HEAD") == 0) {
+		req->method=HEAD;
+		_head_response = 1;
+	}
     else {
         req->status=501;
         return -1;
@@ -324,7 +327,9 @@ void err_response(int fd, int status) {
 		sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
 		Send(fd, buf, strlen(buf),0);	
 	}
-	Send(fd, body, strlen(body),0);
+	
+	if (_head_response != 1)
+		Send(fd, body, strlen(body),0);
 }
 
 void get_status_msg(int code, char msg[]) {

@@ -147,36 +147,35 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     }
 
     /* path convertion, first tokenize, then combine up */
-    char tos[256][256];
-    int add[256];
-    int ind0=0;
-    int ind1=0;
-    int len=strlen(req->uri);
-    memset(add, 0, sizeof(add));
-    for (int i=0; i<len; i++) {
-        while (i<len && req->uri[i]=='/')
-            i++; 
-        while (i<len && req->uri[i]!='/')
-            tos[ind0][ind1++]=req->uri[i++];
-        if (strcmp(tos[ind0], "..")!=0)
-            add[ind0]=1;
-        else {
-            add[ind0]=0;
-            if (ind0>0)
-                add[ind0-1]=0;
-        }
-        ind0++;
-        ind1=0;
-    }
-
-    int ind=0;
     char buf[256];
-    for (int i=0; i<ind0; i++) if (add[i]) {
-        buf[ind++]='/';
-        for (int j=0; j<strlen(tos[i]); j++)
-            buf[ind++]=tos[i][j];
+    char tmp[256];
+    char *bufp=buf;
+    int ind=0;
+    int len=strlen(req->uri);
+    for (int i=0; i<len; i++) {
+        while (i<len && req->uri[i]=='/') i++; 
+        while (i<len && req->uri[i]!='/') tmp[ind++]=req->uri[i++];
+        tmp[ind]=0;
+        if (tmp[0]==0)
+            continue;
+        if (strcmp(tmp, "..")!=0) {
+            *bufp='/';
+            bufp++;
+            for (int j=0; j<ind; j++) {
+                *bufp=tmp[j];
+                bufp++;
+            }
+            *bufp=0;
+        } else {
+            while (*bufp!='/') bufp--;
+            if (bufp==buf) {
+                *bufp='/';
+                *(bufp+1)=0;
+            } else
+                *bufp=0;
+        }
+        ind=0;
     }
-
     strncpy(req->uri, buf, strlen(buf));
 
     return 0;

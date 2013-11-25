@@ -8,6 +8,7 @@
 
 /* TODO currently global, any further advices? */
 static int _sock;
+static int _simple_response;
 
 static void
 rd_timeout(int sig) {
@@ -148,21 +149,21 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 
     /* path convertion, first tokenize, then combine up */
     char buf[256];
-    char tmp[256];
+    char temp[256];
     char *bufp=buf;
     int ind=0;
     int len=strlen(req->uri);
     for (int i=0; i<len; i++) {
         while (i<len && req->uri[i]=='/') i++; 
-        while (i<len && req->uri[i]!='/') tmp[ind++]=req->uri[i++];
-        tmp[ind]=0;
-        if (tmp[0]==0)
+        while (i<len && req->uri[i]!='/') temp[ind++]=req->uri[i++];
+        temp[ind]=0;
+        if (temp[0]==0)
             continue;
-        if (strcmp(tmp, "..")!=0) {
+        if (strcmp(temp, "..")!=0) {
             *bufp='/';
             bufp++;
             for (int j=0; j<ind; j++) {
-                *bufp=tmp[j];
+                *bufp=temp[j];
                 bufp++;
             }
             *bufp=0;
@@ -218,7 +219,13 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     }
 
     if (version[0]==0) {
-        // version is not specified, use HTTP/1.0
+        // version is not specified, if is GET, validate it as HTTP/0.9 Simple request
+		if (req->method == GET)
+			_simple_response = 1;
+		else {
+			req->status=400;
+	        return -1;
+		}
     } else {
         char *http=strstr(version, "HTTP/");
         if (http==NULL || http!=version) {
@@ -233,7 +240,7 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
             || (major==0 && minor==9)) {
             return 0;
         }
-        req->status=400;
+        req->status=505;
         return -1;
     }
     
@@ -300,12 +307,14 @@ void err_response(int fd, int status) {
 	sprintf(body, "%s<body>%d: %s\r\n", body, status, msg);
 	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
 	
-	sprintf(buf, "HTTP/1.0 %d %s\r\n", status, msg);
-	Send(fd, buf, strlen(buf),0);
-	sprintf(buf, "Content-type: text/html\r\n");
-	Send(fd, buf, strlen(buf),0);
-	sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
-	Send(fd, buf, strlen(buf),0);
+	if (_simple_response !=1 ) {
+		sprintf(buf, "HTTP/1.0 %d %s\r\n", status, msg);
+		Send(fd, buf, strlen(buf),0);
+		sprintf(buf, "Content-type: text/html\r\n");
+		Send(fd, buf, strlen(buf),0);
+		sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
+		Send(fd, buf, strlen(buf),0);	
+	}
 	Send(fd, body, strlen(body),0);
 }
 

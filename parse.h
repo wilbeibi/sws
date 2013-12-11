@@ -11,10 +11,10 @@
 
 
 typedef struct req_info {
-	int method;
-	int status;
-	int cgi;
-	char uri[256];
+    int method;
+    int status;
+    int cgi;
+    char uri[256];
 }Req_info;
 
 void err_response(int fd, int status);

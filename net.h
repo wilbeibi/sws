@@ -8,7 +8,7 @@ typedef struct arg_t{
     char *cgiDir;    /* -c dir */
     char *ipAddr;    /* -i address */
     char *logFile;   /* -l file */
-    char *port;	     /* -p port */
+    char *port;      /* -p port */
     char *dir;       /* service directory*/
 }Arg_t;
 
@@ -35,7 +35,7 @@ typedef struct arg_t{
 // POSIX
 #endif
 */
-#define WATCH(fmt, ...)							\
+#define WATCH(fmt, ...)                            \
     if (DEBUG) printf(fmt, __VA_ARGS__);
 
 #define SIZE 1024
@@ -81,4 +81,4 @@ int server_listen(Arg_t *optInfo);
 
 
 
-#endif	/* _NET_H_ */
+#endif    /* _NET_H_ */

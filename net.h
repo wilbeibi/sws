@@ -12,8 +12,7 @@ typedef struct arg_t{
     char *dir;       /* service directory*/
 }Arg_t;
 
-
-
+char *logDir;
 
 #include <sys/socket.h>
 #include <sys/types.h>

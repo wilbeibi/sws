@@ -5,9 +5,14 @@
 #include <sys/types.h>
 #include <bsd/libutil.h>
 
+#include <libgen.h>
+#include <netinet/in.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+
 #include <unistd.h>
 #include <errno.h>
 #include <err.h>
@@ -16,8 +21,7 @@
 #include "net.h"
 
 #define DEBUG 1
-#define DIR   1
-#define FILE  2
+
 static void usage();
 static char *progname;
 static int debug=0;
@@ -25,37 +29,37 @@ static int debug=0;
 struct pidfh *pfh;
 static void clean_up()
 {
-    pidfile_remove(pfh);
+    /* note we have closed pfh in child process */
+    (void)pidfile_remove(pfh);
     return;
 }
 
-static void check_path(char * path, int type)
+static void sig_term(int sig)
 {
-    struct stat st;
-    char * tmp;
-    if (path != NULL){
+    clean_up();
+    Signal(SIGTERM, SIG_DFL);
+    raise(SIGTERM);
+    return;
+}
+
+static void check_path(char * path)
+{
+	struct stat st;
+	char * tmp;
+	if (path != NULL){
         if (lstat(path, &st) == -1) 
-            sys_err(path);
-            
-        if (type == DIR) {
-            if ( !(st.st_mode & S_IFDIR ))
-                sys_err("Invalid path. Not a dir");
-            /* add '/' if there isn't one in the end of the dir */
-            tmp = path;
-            while (*tmp != '\0')
-                tmp++;
-            if (*(tmp-1) != '/') {
-                *(tmp) = '/';
-                *(tmp+1) = '\0';
-            }
-                
+            sys_err(path);			
+        if ( !(st.st_mode & S_IFDIR ))
+            sys_err("Invalid path. Not a dir");
+        /* add '/' if there isn't one in the end of the dir */
+        tmp = path;
+        while (*tmp != '\0')
+            tmp++;
+        if (*(tmp-1) != '/') {
+            *(tmp) = '/';
+            *(tmp+1) = '\0';
         }
-        else if (type == FILE) {
-            if ( !(st.st_mode & S_IFREG ))
-                sys_err("Invalid path. Not a file");
-        }        
     }
-    
 }
 
 int main(int argc, char *argv[])
@@ -63,7 +67,8 @@ int main(int argc, char *argv[])
     int opt = 0;
     Arg_t optInfo;
     progname = argv[0];
-    
+	FILE * fp = NULL;
+	logDir = NULL;
 
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
@@ -73,6 +78,7 @@ int main(int argc, char *argv[])
     const char *optString = "c:dhi:l:p:";
     char *endptr;
     int pt;
+
     while((opt = getopt(argc, argv, optString)) != -1){
         switch(opt){
         case 'c':        /* CGI */
@@ -106,19 +112,29 @@ int main(int argc, char *argv[])
     argv += optind;
 
     if (argc>1) {
-        usage(); return 0;
+        usage();
     }
 
     if (*argv == NULL)
         usage();
-    else {
-        /* check all paths from getopt is valid*/
-        optInfo.dir= *argv;
-        check_path(optInfo.dir,DIR);
-        check_path(optInfo.cgiDir,DIR);
-        check_path(optInfo.logFile,FILE);
-    }
-          
+
+	/* check all paths from getopt is valid*/
+    optInfo.dir= *argv;
+    optInfo.dir = realpath(optInfo.dir,NULL);
+    check_path(optInfo.dir);
+    check_path(optInfo.cgiDir);
+
+	if (optInfo.logFile) {
+		char temp[256];
+		strcpy(temp,optInfo.logFile);
+		check_path(dirname(temp));
+		logDir = strdup(optInfo.logFile);
+		/*create log file if not exist*/
+		fp = fopen( logDir, "a" );
+		if (fp == NULL)
+			sys_err("open log failed");
+		fclose(fp);
+	}
 
     /**
      * it should have different implementation on other platforms.
@@ -128,11 +144,13 @@ int main(int argc, char *argv[])
      * flopen pidfile, write, remove on error and exit
      */
     if (!debug) {
+        Signal(SIGTERM, sig_term);
+        atexit(clean_up);
         int opid;
-        pfh=pidfile_open(NULL, 0700, &opid);
+        pfh=pidfile_open("./pidfile", 0700, &opid);
         if (pfh==NULL) {
             if (errno==EEXIST)
-                errx(1, "already running, pid: %d.", opid);
+                errx(1, "already running, pid: %d", opid);
             warn("can't open or create pidfile");
         }
         if (daemon(1, 0)==-1) {
@@ -140,17 +158,17 @@ int main(int argc, char *argv[])
             err(1, "can't daemonize");
         }
         pidfile_write(pfh);
-        atexit(clean_up);
     }
-
+    
     server_listen(&optInfo);
 
-    free(optInfo.cgiDir);
-    free(optInfo.ipAddr);
-    free(optInfo.logFile);
     free(optInfo.port);
+    free(optInfo.ipAddr);
     free(optInfo.dir);
-    
+	if (logDir) free(logDir);
+    if (optInfo.cgiDir) free(optInfo.cgiDir);
+    if (optInfo.logFile) free(optInfo.logFile);
+
     exit( EXIT_SUCCESS );
 }
 

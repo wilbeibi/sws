@@ -24,7 +24,7 @@
 
 static void child_handler(int sig);
 
-/* pfh is defined in main.c*/
+/* pfh is defined in main.c */
 extern struct pidfh *pfh;
 
 int server_listen( Arg_t *optInfo){
@@ -53,6 +53,8 @@ int server_listen( Arg_t *optInfo){
     Bind(listenfd, res->ai_addr, res->ai_addrlen);
     Listen(listenfd, LISTENQ);
 
+    Signal(SIGCHLD, child_handler);
+
     while(1){
         pid_t childpid;
         struct sockaddr_in* cliAdr = (struct sockaddr_in*)&client_addr;
@@ -70,31 +72,29 @@ int server_listen( Arg_t *optInfo){
         FD_SET(listenfd, &rdy);
 
         int ret=select(listenfd+1, &rdy, 0, 0, &to);
-        if (ret==-1) {
-            req.status=500;
+        if (ret==-1)
             continue;
-        } else if (ret==0) {
-            req.status=502;
+        else if (ret==0)
             continue;
-        } else if (FD_ISSET(listenfd, &rdy)==0) {
+        else if (FD_ISSET(listenfd, &rdy)==0)
             // do some fun stuff...
             continue;
-        }
 
         connfd = Accept(listenfd, (struct sockaddr *) &client_addr, &clientlen);
-        printf ("Server is up on port:%s.\n", optInfo->port);
+        // there is noneed to pop this for each connection
+        // printf ("Server is up on port:%s.\n", optInfo->port);
     
         /* Communicate with client */
         if( (childpid = fork()) == 0){
             pidfile_close(pfh);
+            Signal(SIGTERM, SIG_DFL);
             Close(listenfd);
             Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
             read_sock(connfd, &req, optInfo);    
         
             exit(0);
-        }else {
-            Signal(SIGCHLD, child_handler);
         }
+        
         Close(connfd);
     }
     freeaddrinfo(res);

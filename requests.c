@@ -57,7 +57,12 @@ int serve_dir(int fd, Req_info * req) {
 	char content[MAXBUF];
 	char date[256];
 	struct stat sbuf;
+	struct stat sb;
+	
 	struct dirent *dirp;
+	char last_modified[256];
+	char path[256];
+	char permission[20];
 	
 	sprintf(index, "%sindex.html",req->uri);
 	if( !lstat(index, &sbuf)){
@@ -65,19 +70,32 @@ int serve_dir(int fd, Req_info * req) {
 		return serve_static(fd, req,sbuf.st_size);
 	}
 	
-	printf("dir detail\n");	
 	if ((dp = opendir(req->uri)) == NULL ) {
 		err_response(fd, 403);
 		return 1;
 	}
-	sprintf(content,"<!DOCTYPE><html><head><title>Four0Four sws</title></head><body><h1>Index of %s:</h1><br/>",basename(req->uri));	
+	sprintf(content,"<!DOCTYPE><html><head><title>Four0Four sws</title></head><body><h1>Index of %s:</h1><br/><table><tr><th align='left'>Permission:</th><th align='left'>Name:</th><th align='right'>Last_Modified:</th></tr><tr><th colspan='5'><hr></th></tr>",basename(req->uri));	
+	
 	while ((dirp = readdir(dp)) != NULL ) {
-		if (dirp->d_name[0] != '.') {
-			//printf("%s\n", dirp->d_name);
-			sprintf(content, "%s<p>%s</p>",content,dirp->d_name);	
+		if (dirp->d_name[0] != '.') {	
+			sprintf(path,"%s%s",req->uri,dirp->d_name);
+			if (stat(path, &sb) == -1) {
+				if (lstat(path, &sb) == -1) {
+					strcpy(last_modified,"Cannot stat\0");
+				}
+			} 
+			else {
+				strmode(sb.st_mode, permission);
+				struct tm * tmp;
+				tmp = gmtime(&sb.st_mtime);
+				char *Wday[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+				char *Mth[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+				sprintf(last_modified,"%s, %d %s %d %d:%d:%d GMT",Wday[tmp->tm_wday],(tmp->tm_mday),Mth[tmp->tm_mon],(1900+tmp->tm_year),(tmp->tm_hour),(tmp->tm_min),(tmp->tm_sec));	
+			}			
+			sprintf(content, "%s<tr><td align='left'>%s</td><td align='left'>%s</td><td align='right'>%s</td></tr>",content,permission,dirp->d_name,last_modified);	
 		}
 	}		
-	sprintf(content, "%s</body></html>",content);	
+	sprintf(content, "%s<tr><th colspan='5'><hr></th></tr></table><br/><span>Four0Four Server page</span></body></html>",content);	
 	closedir(dp);
 	
 	sprintf(buf, "HTTP/1.0 200 OK\r\n");
@@ -89,6 +107,7 @@ int serve_dir(int fd, Req_info * req) {
 	
 	Send(fd, buf, strlen(buf), 0);
 	Send(fd, content, strlen(content), 0);
+	
 	return 0;
 }
 

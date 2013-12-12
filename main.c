@@ -3,50 +3,37 @@
  */
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <libgen.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <netinet/in.h>
-
 #include "net.h"
 
-
 #define DEBUG 1
-#define DIR 1
-#define FILE 2
+
 static void usage();
 static char *progname;
 
-
-static void check_path(char * path, int type)
+static void check_path(char * path)
 {
 	struct stat st;
 	char * tmp;
 	if (path != NULL){
-		if (lstat(path, &st) == -1) 
-			sys_err(path);
-			
-		if (type == DIR) {
-			if ( !(st.st_mode & S_IFDIR ))
-				sys_err("Invalid path. Not a dir");
-			/* add '/' if there isn't one in the end of the dir */
-			tmp = path;
-			while (*tmp != '\0')
-				tmp++;
-			if (*(tmp-1) != '/') {
-				*(tmp) = '/';
-				*(tmp+1) = '\0';
-			}
-				
-		}
-		else if (type == FILE) {
-			if ( !(st.st_mode & S_IFREG ))
-				sys_err("Invalid path. Not a file");
-		}		
-	}
-	
+        if (lstat(path, &st) == -1) 
+            sys_err(path);			
+        if ( !(st.st_mode & S_IFDIR ))
+            sys_err("Invalid path. Not a dir");
+        /* add '/' if there isn't one in the end of the dir */
+        tmp = path;
+        while (*tmp != '\0')
+            tmp++;
+        if (*(tmp-1) != '/') {
+            *(tmp) = '/';
+            *(tmp+1) = '\0';
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -55,7 +42,6 @@ int main(int argc, char *argv[])
     Arg_t optInfo;
     progname = argv[0];
     
-
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
     optInfo.logFile = NULL;
@@ -96,19 +82,19 @@ int main(int argc, char *argv[])
     argv += optind;
 
     if (argc>1) {
-        usage(); return 0;
+        usage();
     }
 
-	if (*argv == NULL)
-		usage();
-	else {
-		/* check all paths from getopt is valid*/
-		optInfo.dir= *argv;
-		check_path(optInfo.dir,DIR);
-		check_path(optInfo.cgiDir,DIR);
-		check_path(optInfo.logFile,FILE);
-	}
-  		
+    if (*argv == NULL)
+        usage();
+
+	/* check all paths from getopt is valid*/
+	optInfo.dir= *argv;
+    check_path(optInfo.dir);
+	optInfo.dir = realpath(optInfo.dir,NULL);
+	check_path(optInfo.dir);
+    check_path(optInfo.cgiDir);
+    check_path(dirname(optInfo.logFile));
     server_listen(&optInfo);
 
     free(optInfo.cgiDir);

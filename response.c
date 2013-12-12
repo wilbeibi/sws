@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+
+#include "net.h"
+#include "response.h"
+
+void get_timestamp(char *buf)
+{
+	time_t t;
+	struct tm * tmp;
+	char *Wday[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+	char *Mth[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+	time(&t);
+	tmp = gmtime(&t);
+	sprintf(buf,"%s, %d %s %d %d:%d:%d GMT",Wday[tmp->tm_wday],(tmp->tm_mday),Mth[tmp->tm_mon],(1900+tmp->tm_year),(tmp->tm_hour),(tmp->tm_min),(tmp->tm_sec));	
+}
+
+void err_response(int fd, int status) {
+	char buf[MAXBUF], body[MAXBUF], msg[LINESIZE];
+	get_status_msg(status, msg);
+	char date[256];
+	sprintf(body, "<!DOCTYPE html><html><title>SWS Error</title>\r\n");
+	sprintf(body, "%s<body>%d: %s\r\n", body, status, msg);
+	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
+	
+	if (_simple_response !=1 ) {
+		sprintf(buf, "HTTP/1.0 %d %s\r\n", status, msg);
+		Send(fd, buf, strlen(buf),0);
+		get_timestamp(date);
+		sprintf(buf, "Date: %s\r\n",date);
+		Send(fd, buf, strlen(buf), 0);
+		sprintf(buf, "Server: Four0Four\r\n");
+		Send(fd, buf, strlen(buf), 0);
+		sprintf(buf, "Content-type: text/html\r\n");
+		Send(fd, buf, strlen(buf), 0);
+		sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
+		Send(fd, buf, strlen(buf), 0);	
+	}
+	
+	if (_head_response != 1)
+		Send(fd, body, strlen(body), 0);
+}
+
+void get_status_msg(int code, char msg[]) {
+	bzero(msg, LINESIZE);
+	switch(code){
+	case 200:
+		strcpy(msg, "OK");
+		break;
+	case 400:
+		strcpy(msg, "Bad Request");
+		break;
+	case 403:
+		strcpy(msg, "Forbidden");
+		break;
+	case 404:
+		strcpy(msg, "Not Found");
+		break;
+	case 408:
+		strcpy(msg, "Request Timeout");
+		break;
+	case 501:
+		strcpy(msg, "Not Implemented");
+		break;
+	case 505:
+		strcpy(msg, "Version Not Support");
+		break;
+	case 522:
+		strcpy(msg, "Connection Timed Out");
+		break;
+	default:
+		strcpy(msg, "Unrecognized Statues");
+		break;
+	}
+}
+

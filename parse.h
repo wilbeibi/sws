@@ -8,8 +8,6 @@
 #define NO_CGI 0
 #define DO_CGI 1
 
-
-
 typedef struct req_info {
 	int method;
 	int status;
@@ -17,7 +15,7 @@ typedef struct req_info {
 	char uri[256];
 }Req_info;
 
-void err_response(int fd, int status);
+
 void read_sock(int sock, Req_info *req, Arg_t *optInfo);
 
 #endif

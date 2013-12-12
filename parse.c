@@ -339,17 +339,17 @@ void err_response(int fd, int status) {
 		Send(fd, buf, strlen(buf),0);
 		get_timestamp(date);
 		sprintf(buf, "Date: %s\r\n",date);
-		Send(fd, buf, strlen(buf),0);
+		Send(fd, buf, strlen(buf), 0);
 		sprintf(buf, "Server: Four0Four\r\n");
-		Send(fd, buf, strlen(buf),0);
+		Send(fd, buf, strlen(buf), 0);
 		sprintf(buf, "Content-type: text/html\r\n");
-		Send(fd, buf, strlen(buf),0);
+		Send(fd, buf, strlen(buf), 0);
 		sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
-		Send(fd, buf, strlen(buf),0);	
+		Send(fd, buf, strlen(buf), 0);	
 	}
 	
 	if (_head_response != 1)
-		Send(fd, body, strlen(body),0);
+		Send(fd, body, strlen(body), 0);
 }
 
 void get_status_msg(int code, char msg[]) {
@@ -360,6 +360,9 @@ void get_status_msg(int code, char msg[]) {
 		break;
 	case 400:
 		strcpy(msg, "Bad Request");
+		break;
+	case 403:
+		strcpy(msg, "Forbidden");
 		break;
 	case 404:
 		strcpy(msg, "Not Found");

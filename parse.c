@@ -12,7 +12,7 @@ static void
 rd_timeout(int sig) {
     // response to client of 408?
     // log warn: read timeout
-    err_response(_sock, 408);
+    (void)err_response(_sock, 408);
     exit(0);
 }
 
@@ -332,19 +332,19 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 	strncpy(req->fstLine,buf,strlen(buf)+1);
 	get_timestamp(req->recvTime);
     if (ret==-1) {
-        err_response(sock, req->status);
+        sws_response(sock, req);
         return;
     }
    
     ret=parse_req_line(buf,req,optInfo);
     if (ret==-1) {
-        err_response(sock, req->status);
+        sws_response(sock, req);
         return;
     }
 
     ret=parse_uri(req, optInfo);
     if (ret==-1) {
-        err_response(sock, req->status);
+        sws_response(sock, req);
         return;
     }
 
@@ -356,11 +356,11 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     bzero(buf, MAXBUF);
     ret=read_rest(sock,req,buf);
     if (ret==-1) {
-        err_response(sock, req->status);
+        sws_response(sock, req);
         return;
     }
 	//printf("rest:%s\n",buf);
-	//err_response(sock, req->status);
+	//sws_response(sock, req);
 	printf("uri:%s\n",req->uri);
     signal(SIGALRM, wt_timeout);
     alarm(0);

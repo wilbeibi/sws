@@ -93,25 +93,19 @@ read_rest(int sock, Req_info *req)
             break;
         }
         char *hea=strtok(tmp, " ");
-        if (hea==NULL) {
-            req->status=400;
-            return -1;
-        }
         char *gar=strtok(NULL, " ");
         if (gar!=NULL) {
             req->status=400;
             return -1;
         }
-        int num=0;
         char *tok=strtok(hea, "=");
-        while (tok!=NULL) {
-            strcpy(req->header[hid][num++], tok);
-            tok=strtok(NULL, "=");
-        }
-        if (num!=2) {
+        strcpy(req->header[hid][0], tok);
+        tok=strtok(NULL, "=");
+        if (tok==NULL) {
             req->status=400;
             return -1;
         }
+        strcpy(req->header[hid][1], tok);
         hid++;
         // if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
         //     break;
@@ -169,13 +163,17 @@ void process_path(char * uri)
  */
 int parse_uri(Req_info * req, Arg_t *optInfo)
 {
-    char * tmp = req->uri;
+    char _uri[256]; strcpy(_uri, req->uri);
+    char *uri=strtok(_uri, "?");
+    char *que=strtok(NULL, "?");
+    char *tmp=uri;
+
     char usr[256];
     char rest[256];
     int i;
 	req->cgi=NO_CGI;
 
-	printf("original uri:%s\n",req->uri);
+	printf("original uri:%s\n", uri);
 	/* http://babla. should also be valid
     if (req->uri[0] != '/') {
         req->status = 404;
@@ -184,7 +182,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 	*/
 
 	/* According to sws man page, request for user home should start with '~'  */
-    if (strncmp(req->uri,"/~",2) == 0) {
+    if (strncmp(uri,"/~",2) == 0) {
         tmp += 2;
         i = 0;
         while (*tmp != '/' ) {
@@ -215,9 +213,9 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		#endif
         
     }
-    else if (strncmp(req->uri,"/cgi-bin/",9) == 0) {
+    else if (strncmp(uri,"/cgi-bin/",9) == 0) {
         req->cgi=DO_CGI;
-        tmp = req->uri;
+        tmp = uri;
         tmp += 9;
 		strncpy(rest,tmp,256);
 		
@@ -228,19 +226,38 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest);	
 		}		
 		else {
-			printf("processing:%s\n",req->uri);
-			process_path(req->uri);
+			printf("processing:%s\n",uri);
+			process_path(uri);
 		}	
     }
 
 	else {
-		char * tmp2 = strdup(req->uri);
+		char * tmp2 = strdup(uri);
 		printf("processing:%s\n",tmp2);
 		process_path(tmp2);
 		printf("afer:%s\n",tmp2);
 		sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
 		free(tmp2);
 	}	
+
+    /* parse query string */
+    if (que!=NULL) {
+        int id=0;
+        char *mstt;
+        char *qtok=strtok_r(que, "&", &mstt);
+        while (qtok!=NULL) {
+            char *tok=strtok(qtok, "=");
+            strcpy(req->query[id][0], tok);
+            tok=strtok(NULL, "=");
+            if (tok==NULL) {
+                req->status=400;
+                return -1;
+            }
+            strcpy(req->query[id][1], tok);
+            id++;
+            qtok=strtok_r(NULL, "&", &mstt);
+        }
+    }
 
     return 0;
 }
@@ -264,10 +281,6 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     char *gar;
 
     method=strtok(buf, " ");
-    if (method==NULL) {
-        req->status=400;
-        return -1;
-    }
 
     if (strcmp(method, "GET") == 0)
         req->method=GET;
@@ -311,10 +324,6 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
         }
         http+=5;
         char *ver=strtok(http, " ");
-        if (ver==NULL) {
-            req->status=400;
-            return -1;
-        }
         gar=strtok(NULL, " ");
         if (gar!=NULL) {
             req->status=400;
@@ -383,6 +392,8 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     Signal(SIGALRM, wt_timeout);
     alarm(WRITE_TIMEOUT);
 
-    serve_request(sock,req);
+    ret=serve_request(sock,req);
+    if (ret!=0)
+        sws_response(sock, req);
     return;
 }

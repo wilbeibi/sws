@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #ifdef __APPLE__
 #include <stdlib.h>
@@ -27,6 +28,7 @@
 #include "response.h"
 
 int serve_static(int fd, Req_info *req, int fsize);
+int serve_dynamic(int fd, Req_info *req);
 int serve_dir(int fd, Req_info * req);
 
 /* return 0 if success */
@@ -56,7 +58,7 @@ int serve_request(int fd, Req_info *req){
 			return 1;
 		}
 		/* req' uri*/
-		//server_dynamic(fd, req)
+		return serve_dynamic(fd, req);
 	}
 	return 0;
 }
@@ -164,18 +166,58 @@ int serve_static(int fd, Req_info *req, int fsize){
 /**
  * script should use getenv(3) to grab meta-variables
  *
- * 1 put all related header fields into env (meta-variable)
- * 2 substract QUERY_STRING from req->uri: uri?l*(k=v)
+ * 1 put all related kv fields into env (meta-variable)
+ * 2 exec? fork,pipe?
  * 3 bridge stdin<-script.stdout
  *          stdout->script.stdin
  */
 int
 serve_dynamic(int fd, Req_info *req)
 {
-    int id=0;
-    while (req->header[id][0][0]) {
-        printf("%s=%s", req->header[id][0], req->header[id][1]);
-        id++;
+    int pid;
+    int fds[2];
+    if ((pipe(fds))==-1) {
+        req->status=500;
+        return 1;
     }
+
+    if ((pid=fork())==-1) {
+        req->status=500;
+        return 1;
+    } else if (pid==0) {
+        close(fds[0]);
+        dup2(fds[1], STDOUT_FILENO);
+        int id=0;
+        while (req->header[id][0][0]) {
+            setenv(req->header[id][0], req->header[id][1], 1);
+            id++;
+        }
+        id=0;
+        while (req->query[id][0][0]) {
+            setenv(req->query[id][0], req->query[id][1], 1);
+            id++;
+        }
+        printf("ops\n");
+        exit(0);
+    } else {
+        close(fds[1]);
+        dup2(fds[0], STDIN_FILENO);
+        int stt;
+        if ((waitpid(pid, &stt, WNOHANG))==-1) {
+            req->status=500;
+            return 1;
+        }
+        if (stt!=0) {
+            req->status=500;
+            return 1;
+        }
+        /* act based on stt, a switch statment maybe... */
+        if (stt==0) {
+            char ret[1024];
+            read(fds[0], ret, 1024);
+            printf("%s", ret);
+        }
+    }
+
 	return 0;
 }

@@ -12,7 +12,11 @@ typedef struct req_info {
 	int method;
 	int status;
 	int cgi;
+	int contLen;
 	char uri[256];
+	char fstLine[256];				/* for logging */
+	char clientIp[INET_ADDRSTRLEN]; /* for logging */
+	char recvTime[256];				/* for logging */
 }Req_info;
 
 

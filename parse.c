@@ -91,7 +91,7 @@ read_rest(int sock, Req_info *req, char *buf)
     }
     return tot;
 }
-
+/*
 void process_path(char * uri)
 {
     // path convertion, first tokenize, then combine up 
@@ -128,7 +128,7 @@ void process_path(char * uri)
     }
     strcpy(uri, buf);
 }
-/*
+*/
 void process_path(char * dir)
 {
     char * tmp, *tmp2;
@@ -160,7 +160,7 @@ void process_path(char * dir)
         continue;
     }
 }
-*/
+
 
 /**
  * We only need to implement [ path ], at this point, uri doesn't contain SP
@@ -178,6 +178,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     char rest[256];
     int i;
 	req->cgi=NO_CGI;
+	printf("original uri:%s\n",req->uri);
 	/* http://babla. should also be valid
     if (req->uri[0] != '/') {
         req->status = 404;
@@ -185,8 +186,8 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     }
 	*/
 	/* According to sws man page, request for user home should start with '~'  */
-    if (strncmp(req->uri,"~",1) == 0) {
-        tmp += 1;
+    if (strncmp(req->uri,"/~",2) == 0) {
+        tmp += 2;
         i = 0;
         while (*tmp != '/' ) {
 		/* there must be a slash after the user name, otherwise it's invalid*/
@@ -209,8 +210,12 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		printf("processing:%s\n",rest);
 		process_path(rest);		
 		printf("afer:%s\n",rest);
-        sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
- 
+		#ifdef __APPLE__
+			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest);
+		#else	
+			sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
+		#endif
+        
     }
     else if (strncmp(req->uri,"/cgi-bin/",9) == 0) {
         req->cgi=DO_CGI;
@@ -227,8 +232,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		else {
 			printf("processing:%s\n",req->uri);
 			process_path(req->uri);
-		}
-			
+		}	
     }
 	else {
 		char * tmp2 = strdup(req->uri);
@@ -324,6 +328,8 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 
     /* read first line*/
     ret=read_req_line(sock,req,buf);
+	strncpy(req->fstLine,buf,strlen(buf)+1);
+	get_timestamp(req->recvTime);
     if (ret==-1) {
         err_response(sock, req->status);
         return;

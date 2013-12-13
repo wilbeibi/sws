@@ -1,10 +1,12 @@
 #ifndef _RESPONSE_H_
 #define _RESPONSE_H_
 
-void get_status_msg(int code, char msg[]);
-void err_response(int fd, int status);
-void get_timestamp(char *buf);
+#include "parse.h"
 
+void logging(Req_info *req);
+void get_status_msg(int code, char msg[]);
+int err_response(int fd, int status);
+void get_timestamp(char *buf);
 
 /* TODO currently global, any further advices? */
 int _sock;

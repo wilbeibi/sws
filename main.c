@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+
 #include <unistd.h>
 #include "net.h"
 
@@ -41,7 +43,8 @@ int main(int argc, char *argv[])
     int opt = 0;
     Arg_t optInfo;
     progname = argv[0];
-    
+	FILE * fp = NULL;
+	logDir = NULL;
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
     optInfo.logFile = NULL;
@@ -50,6 +53,7 @@ int main(int argc, char *argv[])
     const char *optString = "c:dhi:l:p:";
     char *endptr;
     int pt;
+
     while((opt = getopt(argc, argv, optString)) != -1){
 		switch(opt){
 		case 'c':		/* CGI */
@@ -89,20 +93,31 @@ int main(int argc, char *argv[])
         usage();
 
 	/* check all paths from getopt is valid*/
-	optInfo.dir= *argv;
+    optInfo.dir= *argv;
+    optInfo.dir = realpath(optInfo.dir,NULL);
     check_path(optInfo.dir);
-	optInfo.dir = realpath(optInfo.dir,NULL);
-	check_path(optInfo.dir);
     check_path(optInfo.cgiDir);
-    check_path(dirname(optInfo.logFile));
+	if (optInfo.logFile) {
+		char temp[256];
+		strcpy(temp,optInfo.logFile);
+		check_path(dirname(temp));
+		logDir = strdup(optInfo.logFile);
+		/*create log file if not exist*/
+		fp = fopen( logDir, "a" );
+		if (fp == NULL)
+			sys_err("open log failed");
+		fclose(fp);
+	}
+    
     server_listen(&optInfo);
 
-    free(optInfo.cgiDir);
-    free(optInfo.ipAddr);
-    free(optInfo.logFile);
     free(optInfo.port);
+    free(optInfo.ipAddr);
     free(optInfo.dir);
-    
+	if (logDir) free(logDir);
+    if (optInfo.cgiDir) free(optInfo.cgiDir);
+    if (optInfo.logFile) free(optInfo.logFile);
+
     exit( EXIT_SUCCESS );
 }
 

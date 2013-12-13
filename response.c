@@ -7,6 +7,7 @@
 #include "net.h"
 #include "response.h"
 
+
 void get_timestamp(char *buf)
 {
 	time_t t;
@@ -18,7 +19,13 @@ void get_timestamp(char *buf)
 	sprintf(buf,"%s, %d %s %d %d:%d:%d GMT",Wday[tmp->tm_wday],(tmp->tm_mday),Mth[tmp->tm_mon],(1900+tmp->tm_year),(tmp->tm_hour),(tmp->tm_min),(tmp->tm_sec));	
 }
 
-void err_response(int fd, int status) {
+void sws_response(int fd, Req_info *req) 
+{
+	req->contLen = err_response(fd, req->status);
+	logging(req);
+}
+
+int err_response(int fd, int status) {
 	char buf[MAXBUF], body[MAXBUF], msg[LINESIZE];
 	get_status_msg(status, msg);
 	char date[256];
@@ -42,7 +49,10 @@ void err_response(int fd, int status) {
 	
 	if (_head_response != 1)
 		Send(fd, body, strlen(body), 0);
+		
+	return (int)strlen(body);
 }
+
 
 void get_status_msg(int code, char msg[]) {
 	bzero(msg, LINESIZE);
@@ -77,3 +87,19 @@ void get_status_msg(int code, char msg[]) {
 	}
 }
 
+
+void logging(Req_info *req) {
+	if (logDir != NULL) {
+	 	char msg[MAXBUF];
+		FILE * fp = NULL;
+		fp = fopen(logDir, "a");
+		if (!fp) {
+			perror("log file open failed");
+		}		
+		req->fstLine[strlen(req->fstLine)-2] = '\0';
+		sprintf(msg, "%s %s \"%s\" %d %d\n",req->clientIp,req->recvTime,req->fstLine,req->status,req->contLen);
+		printf("%s",msg);	
+		int n = fwrite(msg,sizeof(char),strlen(msg)+1,fp);
+		fclose(fp);
+	}	
+}

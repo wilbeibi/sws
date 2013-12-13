@@ -1,6 +1,5 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
 #include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -9,6 +8,17 @@
 #include <sys/types.h>
 #include <libgen.h>
 #include <dirent.h>
+
+#ifdef __APPLE__
+#include <stdlib.h>
+#include <string.h>
+#else
+
+#include <bsd/string.h>
+#include <bsd/stdlib.h>
+
+#endif
+
 
 #include "net.h"
 #include "parse.h"
@@ -107,7 +117,7 @@ int serve_dir(int fd, Req_info * req) {
 	
 	Send(fd, buf, strlen(buf), 0);
 	Send(fd, content, strlen(content), 0);
-	
+	logging(req);
 	return 0;
 }
 
@@ -139,6 +149,7 @@ int serve_static(int fd, Req_info *req, int fsize){
 	
 	/* Send response body to client */
 	Send(fd, datap, fsize, 0);	/* fsize == strlen(datap) */
+	logging(req);
 	munmap(datap, fsize);
 	return 0;
 }

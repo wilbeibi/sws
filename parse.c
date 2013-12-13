@@ -25,6 +25,7 @@ wt_timeout(int sig) {
 void init_req(Req_info * req) 
 {
     req->status = 200;
+	req->contLen = 0;
     req->method = NOT_IMPLEMENTED;
     req->cgi = NO_CGI;
 }

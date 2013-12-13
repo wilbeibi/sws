@@ -73,7 +73,8 @@ int serve_dir(int fd, Req_info * req) {
 	char last_modified[256];
 	char path[256];
 	char permission[20];
-	
+	if (req->uri[strlen(req->uri)-1]!='/')
+		strcat(req->uri,"/");
 	sprintf(index, "%sindex.html",req->uri);
 	if( !lstat(index, &sbuf)){
 		strncpy(req->uri,index,strlen(index)+1);
@@ -87,7 +88,7 @@ int serve_dir(int fd, Req_info * req) {
 	sprintf(content,"<!DOCTYPE><html><head><title>Four0Four sws</title></head><body><h1>Index of %s:</h1><br/><table><tr><th align='left'>Permission:</th><th align='left'>Name:</th><th align='right'>Last_Modified:</th></tr><tr><th colspan='5'><hr></th></tr>",basename(req->uri));	
 	
 	while ((dirp = readdir(dp)) != NULL ) {
-		if (dirp->d_name[0] != '.') {	
+		if (dirp->d_name[0] != '.') {
 			sprintf(path,"%s%s",req->uri,dirp->d_name);
 			if (stat(path, &sb) == -1) {
 				if (lstat(path, &sb) == -1) {
@@ -117,6 +118,7 @@ int serve_dir(int fd, Req_info * req) {
 	
 	Send(fd, buf, strlen(buf), 0);
 	Send(fd, content, strlen(content), 0);
+	req->contLen = (int)strlen(content);
 	logging(req);
 	return 0;
 }
@@ -149,6 +151,7 @@ int serve_static(int fd, Req_info *req, int fsize){
 	
 	/* Send response body to client */
 	Send(fd, datap, fsize, 0);	/* fsize == strlen(datap) */
+	req->contLen = fsize;
 	logging(req);
 	munmap(datap, fsize);
 	return 0;

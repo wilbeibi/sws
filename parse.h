@@ -17,7 +17,9 @@ typedef struct req_info {
 	char fstLine[256];				/* for logging */
 	char clientIp[INET_ADDRSTRLEN]; /* for logging */
 	char recvTime[256];				/* for logging */
-}Req_info;
+    char header[256][2][256];
+    char body[MAXBUF];
+} Req_info;
 
 void read_sock(int sock, Req_info *req, Arg_t *optInfo);
 

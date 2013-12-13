@@ -124,9 +124,9 @@ int Readline(int fd, char* buf)
  
     for (n = 1; n < MAXBUF; n++) { 
         if ((rc = read(fd, &c, 1)) == 1) {
-            *bufp++ = c;
             if (c == '\n')
                 break;
+            *bufp++ = c;
         } else if (rc == 0) {
             if (n == 1)
                 return 0;   /* EOF, no data read */

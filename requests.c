@@ -161,7 +161,21 @@ int serve_static(int fd, Req_info *req, int fsize){
 	return 0;
 }
 
-int serve_dynamic(){
-	
+/**
+ * script should use getenv(3) to grab meta-variables
+ *
+ * 1 put all related header fields into env (meta-variable)
+ * 2 substract QUERY_STRING from req->uri: uri?l*(k=v)
+ * 3 bridge stdin<-script.stdout
+ *          stdout->script.stdin
+ */
+int
+serve_dynamic(int fd, Req_info *req)
+{
+    int id=0;
+    while (req->header[id][0][0]) {
+        printf("%s=%s", req->header[id][0], req->header[id][1]);
+        id++;
+    }
 	return 0;
 }

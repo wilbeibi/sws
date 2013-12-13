@@ -10,7 +10,7 @@ typedef struct arg_t{
     char *logFile;   /* -l file */
     char *port;      /* -p port */
     char *dir;       /* service directory*/
-}Arg_t;
+} Arg_t;
 
 char *logDir;
 

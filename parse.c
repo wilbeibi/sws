@@ -48,14 +48,15 @@ read_req_line(int sock, Req_info *req, char *buf)
         if ((ret=Readline(sock, buf))==-1) {
             req->status=500;
             break;
-        } else if (strcmp(buf,"\r\n") == 0){
+        } else if (!strcmp(buf,"\r") || ret==1){
             continue;
-        } else if(ret<2 || buf[ret-2] !='\r'|| ret > MAXBUF) {
+        } else if (ret > MAXBUF) {
             req->status=400;
             break;
         } else
             break;
     }
+
     if (req->status != 200)
         return -1;
         
@@ -67,30 +68,55 @@ read_req_line(int sock, Req_info *req, char *buf)
  * into read_headers and read_body...but we read headeers only now.
  */
 static int
-read_rest(int sock, Req_info *req, char *buf)
+read_rest(int sock, Req_info *req)
 {
     int ret;
     int tot=0;
-    char * tmp = buf;
+    int hid=0;
+    char tmp[MAXBUF];
     while ((ret=Readline(sock, tmp))) {
         if (ret==-1) {
             req->status=500;
-            return ret;
+            return -1;
         }
         if (ret>=MAXBUF) {
             req->status=400;
-            return ret;
+            return -1;
         }
-        tmp+=ret;
         tot+=ret;
         if (tot>=MAXBUF) {
             req->status=400;
-            return ret;
+            return -1;
         }
-        if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
+        if (!strcmp(tmp, "\r") || ret==1) {
+            req->header[hid][0][0]=0;
             break;
-        if (strcmp(tmp-4,"\r\n\r\n") == 0)
-            break;
+        }
+        char *hea=strtok(tmp, " ");
+        if (hea==NULL) {
+            req->status=400;
+            return -1;
+        }
+        char *gar=strtok(NULL, " ");
+        if (gar!=NULL) {
+            req->status=400;
+            return -1;
+        }
+        int num=0;
+        char *tok=strtok(hea, "=");
+        while (tok!=NULL) {
+            strcpy(req->header[hid][num++], tok);
+            tok=strtok(NULL, "=");
+        }
+        if (num!=2) {
+            req->status=400;
+            return -1;
+        }
+        hid++;
+        // if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
+        //     break;
+        // if (strcmp(tmp-4,"\r\n\r\n") == 0)
+        //     break;
     }
     return tot;
 }
@@ -232,12 +258,16 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
  */
 int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 {    
-    char method[10], version[20];
-    
-    bzero(method,10);
-    bzero(req->uri,256);
-    bzero(version,20);
-    sscanf(buf, "%s%s%s", method, req->uri, version);
+    char *method;
+    char *uri;
+    char *version;
+    char *gar;
+
+    method=strtok(buf, " ");
+    if (method==NULL) {
+        req->status=400;
+        return -1;
+    }
 
     if (strcmp(method, "GET") == 0)
         req->method=GET;
@@ -246,43 +276,58 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     else if (strcmp(method, "HEAD") == 0) {
         req->method=HEAD;
         _head_response = 1;
-    }
-    else {
+    } else {
         req->status=501;
         return -1;
     }
 
-    if (version[0]==0) {
-        // version is not specified, if is GET, validate it as HTTP/0.9 Simple request
-        if ((req->method == GET) && req->uri[0] != '\0')
+    uri=strtok(NULL, " ");
+    if (uri==NULL) {
+        req->status=400;
+        return -1;
+    }
+
+    strcpy(req->uri, uri);
+
+    version=strtok(NULL, " ");
+    if (version==NULL) {
+        if (req->method == GET || req->method==HEAD)
             _simple_response = 1;
         else {
             req->status=400;
             return -1;
         }
     } else {
-	/*
+        /* garbage */
+        gar=strtok(NULL, " ");
+        if (gar!=NULL) {
+            req->status=400;
+            return -1;
+        }
         char *http=strstr(version, "HTTP/");
         if (http==NULL || http!=version) {
             req->status=400;
             return -1;
         }
         http+=5;
+        char *ver=strtok(http, " ");
+        if (ver==NULL) {
+            req->status=400;
+            return -1;
+        }
+        gar=strtok(NULL, " ");
+        if (gar!=NULL) {
+            req->status=400;
+            return -1;
+        }
         int major=-1;
         int minor=-1;
-        sscanf(http, "%d.%d", &major, &minor);
+        sscanf(ver, "%d.%d", &major, &minor);
         if ((major==1 && minor==0)
             || (major==0 && minor==9)) {
             return 0;
         }
         req->status=505;
-        return -1;
-*/
-		
-    }
-
-    if (req->uri[0]==0) {
-        req->status=400;
         return -1;
     }
     
@@ -326,15 +371,14 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
      * buf[0] because we didn't do buf+=w+1. so read_rest will override
      * request-line, which is acceptable here.
      */
-    bzero(buf, MAXBUF);
-    ret=read_rest(sock,req,buf);
+    ret=read_rest(sock,req);
     if (ret==-1) {
         sws_response(sock, req);
         return;
     }
-	//printf("rest:%s\n",buf);
-	//sws_response(sock, req);
-	printf("uri:%s\n",req->uri);
+
+	printf("uri:%s\n", req->uri);
+
     alarm(0);
     Signal(SIGALRM, wt_timeout);
     alarm(WRITE_TIMEOUT);

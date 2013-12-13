@@ -197,13 +197,15 @@ serve_dynamic(int fd, Req_info *req)
             setenv(req->query[id][0], req->query[id][1], 1);
             id++;
         }
-        printf("ops\n");
+        if (execlp(req->uri, req->uri, NULL)==-1) {
+            req->status=500;
+            return 1;
+        }
         exit(0);
     } else {
         close(fds[1]);
         dup2(fds[0], STDIN_FILENO);
         int stt;
-        printf("%d is waiting for %d\n", getpid(), pid);
         if ((waitpid(pid, &stt, WNOHANG))==-1) {
             req->status=500;
             return 1;
@@ -214,9 +216,25 @@ serve_dynamic(int fd, Req_info *req)
         }
         /* act based on stt, a switch statment maybe... */
         if (stt==0) {
-            char ret[1024];
-            read(fds[0], ret, 1024);
-            printf(":%s", ret);
+            char res[MAXBUF];
+            char date[256];
+            int ret=read(fds[0], res, MAXBUF);
+            if (ret==-1) {
+                req->status=500;
+                return 1;
+            }
+            int len=strlen(res);
+
+            char buf[MAXBUF];
+            sprintf(buf, "HTTP/1.0 200 OK\r\n");
+            get_timestamp(date);
+            sprintf(buf, "%sDate: %s\r\n",buf,date);
+            sprintf(buf, "%sServer: Four0Four\r\n", buf);
+            sprintf(buf, "%sContent-type: text/html\r\n", buf);
+            sprintf(buf, "%sContent-length: %d\r\n\r\n", buf, len);
+            Send(fd, buf, strlen(buf), 0);
+
+            Send(fd, res, len, 0);
         }
     }
 

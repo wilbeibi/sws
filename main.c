@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
         pidfile_write(pfh);
     }
     
+    printf("running with %d\n", getpid());
     server_listen(&optInfo);
 
     free(optInfo.port);

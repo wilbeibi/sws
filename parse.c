@@ -207,9 +207,9 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		process_path(rest);		
 		printf("afer:%s\n",rest);
 		#ifdef __APPLE__
-			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest);
+			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
 		#else	
-			sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
+			sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
 		#endif
         
     }
@@ -223,11 +223,14 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 			printf("processing:%s\n",rest);
 			process_path(rest);
 			printf("afer:%s\n",rest);
-        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest);	
+        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);
 		}		
 		else {
-			printf("processing:%s\n",uri);
-			process_path(uri);
+            req->status=401;
+            return -1;
+			// printf("processing:%s\n",uri);
+			// process_path(uri);
+            // sprintf(req->uri,"%s",uri);
 		}	
     }
 
@@ -236,7 +239,8 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		printf("processing:%s\n",tmp2);
 		process_path(tmp2);
 		printf("afer:%s\n",tmp2);
-		sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
+		// sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
+		sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
 		free(tmp2);
 	}	
 
@@ -392,8 +396,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     Signal(SIGALRM, wt_timeout);
     alarm(WRITE_TIMEOUT);
 
-    ret=serve_request(sock,req);
-    if (ret!=0)
-        sws_response(sock, req);
+    serve_request(sock,req);
+
     return;
 }

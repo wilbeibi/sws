@@ -203,6 +203,7 @@ serve_dynamic(int fd, Req_info *req)
         close(fds[1]);
         dup2(fds[0], STDIN_FILENO);
         int stt;
+        printf("%d is waiting for %d\n", getpid(), pid);
         if ((waitpid(pid, &stt, WNOHANG))==-1) {
             req->status=500;
             return 1;
@@ -215,7 +216,7 @@ serve_dynamic(int fd, Req_info *req)
         if (stt==0) {
             char ret[1024];
             read(fds[0], ret, 1024);
-            printf("%s", ret);
+            printf(":%s", ret);
         }
     }
 

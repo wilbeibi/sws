@@ -28,6 +28,7 @@ void init_req(Req_info * req)
 	req->contLen = 0;
     req->method = NOT_IMPLEMENTED;
     req->cgi = NO_CGI;
+	memset(req->ifModified,0,128);
 }
 
 /**
@@ -179,7 +180,6 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     char rest[256];
     int i;
 	req->cgi=NO_CGI;
-	printf("original uri:%s\n",req->uri);
 	/* http://babla. should also be valid
     if (req->uri[0] != '/') {
         req->status = 404;
@@ -208,11 +208,11 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         }      
         strncpy(rest,tmp+1,256);
 		/* prevent spoofing */
-		printf("processing:%s\n",rest);
+		printf("in ~ processing:%s\n",rest);
 		process_path(rest);		
 		printf("afer:%s\n",rest);
 		#ifdef __APPLE__
-			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest);
+			sprintf(req->uri,"/Users/%s/Desktop/%s",usr,rest);
 		#else	
 			sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
 		#endif
@@ -225,7 +225,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		strncpy(rest,tmp,256);
 		
 		if (optInfo->cgiDir != NULL) {
-			printf("processing:%s\n",rest);
+			printf("in cgi processing:%s\n",rest);
 			process_path(rest);
 			printf("afer:%s\n",rest);
         	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest);	
@@ -236,12 +236,12 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		}	
     }
 	else {
-		char * tmp2 = strdup(req->uri);
+		char tmp2[256];
+		strcpy(tmp2,req->uri);
 		printf("processing:%s\n",tmp2);
 		process_path(tmp2);
 		printf("afer:%s\n",tmp2);
 		sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
-		free(tmp2);
 	}	
     return 0;
 }
@@ -316,6 +316,19 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     return 0;
 }
 
+void parse_rest(int sock, char * buf, Req_info * req)
+{
+	char * tmp = strstr(buf,"If-Modified-Since:");
+	int i= 0;
+	if (tmp != NULL && req->method == GET) { 
+		tmp += 18;
+		while ( *tmp++ != '\r') {
+			req->ifModified[i++] = *tmp;
+		}
+		req->ifModified[i] = '\0';	
+	}
+}
+
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
     _sock=sock;
@@ -360,6 +373,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         return;
     }
 	//printf("rest:%s\n",buf);
+	parse_rest(sock,buf,req);
 	//sws_response(sock, req);
 	printf("uri:%s\n",req->uri);
     signal(SIGALRM, wt_timeout);

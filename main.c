@@ -97,11 +97,14 @@ int main(int argc, char *argv[])
     optInfo.dir = realpath(optInfo.dir,NULL);
     check_path(optInfo.dir);
     check_path(optInfo.cgiDir);
+	optInfo.cgiDir = realpath(optInfo.cgiDir,NULL);
 	if (optInfo.logFile) {
 		char temp[256];
 		strcpy(temp,optInfo.logFile);
 		check_path(dirname(temp));
 		logDir = strdup(optInfo.logFile);
+		if (logDir == NULL)
+			sys_err("strdup failed");
 		/*create log file if not exist*/
 		fp = fopen( logDir, "a" );
 		if (fp == NULL)

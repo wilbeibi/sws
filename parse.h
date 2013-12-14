@@ -17,6 +17,7 @@ typedef struct req_info {
 	char fstLine[256];				/* for logging */
 	char clientIp[INET_ADDRSTRLEN]; /* for logging */
 	char recvTime[256];				/* for logging */
+	char ifModified[128];
 }Req_info;
 
 

@@ -60,6 +60,9 @@ void get_status_msg(int code, char msg[]) {
 	case 200:
 		strcpy(msg, "OK");
 		break;
+	case 304:
+		strcpy(msg,"Not Modified");
+		break;
 	case 400:
 		strcpy(msg, "Bad Request");
 		break;

@@ -92,20 +92,14 @@ read_rest(int sock, Req_info *req)
             req->header[hid][0][0]=0;
             break;
         }
-        char *hea=strtok(tmp, " ");
-        char *gar=strtok(NULL, " ");
-        if (gar!=NULL) {
+        char *hea=strtok(tmp, "=");
+        strcpy(req->header[hid][0], hea);
+        hea=strtok(NULL, "=");
+        if (hea==NULL) {
             req->status=400;
             return -1;
         }
-        char *tok=strtok(hea, "=");
-        strcpy(req->header[hid][0], tok);
-        tok=strtok(NULL, "=");
-        if (tok==NULL) {
-            req->status=400;
-            return -1;
-        }
-        strcpy(req->header[hid][1], tok);
+        strcpy(req->header[hid][1], hea);
         hid++;
         // if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
         //     break;
@@ -166,6 +160,11 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     char _uri[256]; strcpy(_uri, req->uri);
     char *uri=strtok(_uri, "?");
     char *que=strtok(NULL, "?");
+    char *gar=strtok(NULL, "?");
+    if (gar!=NULL) {
+        req->status=400;
+        return -1;
+    }
     char *tmp=uri;
 
     char usr[256];

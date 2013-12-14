@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <err.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -14,6 +15,7 @@
 
 #include "net.h" 
 #include "parse.h"
+
 void sys_err(const char *msg){
     perror(msg);
     exit( EXIT_FAILURE );
@@ -139,4 +141,34 @@ int Readline(int fd, char* buf)
     return n;
 }
 
+/**
+ * get the mimetype of a file
+ * @path  absolute path of the file
+ * 
+ * return a char* of "type/subtype"
+ */
+char* getmime(char *path)
+{
+    char cmd[484];
+    sprintf(cmd, "file -i %s | cut -d ':' -f2 | cut -d ';' -f1 | tr -d ' '", 
+            path);
 
+    FILE* f;
+    if ((f=popen(cmd, "r"))==NULL) {
+        warn(1, "popen");
+        return NULL;
+    }
+
+    char *ret=(char*)malloc(64);
+    if (ret==NULL)
+        return NULL;
+
+    int n;
+    if ((n=read(fileno(f), ret, 64))==-1)
+        return NULL;
+
+    /* trunc last '\n'. It can't be trunced in shell script */
+    n=n-1<0 ? 0 : n-1;
+    ret[n]=0;
+    return ret;
+}

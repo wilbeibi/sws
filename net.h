@@ -69,7 +69,7 @@ ssize_t Send(int sock, const void *buf, size_t count,int flag);
 sig_t Signal(int sig, sig_t func);
 int Readline(int fd, char* buf);
 void Chroot(char * dir);
-
+char* getmime(char *);
 
 /****************************************
  *    Network related functions in net.c 

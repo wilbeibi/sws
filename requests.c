@@ -23,8 +23,9 @@
 #include "parse.h"
 #include "response.h"
 
-int serve_static(int fd, Req_info *req, int fsize);
-int serve_dir(int fd, Req_info * req);
+int serve_static (int fd, Req_info *req, int fsize);
+int serve_dir (int fd, Req_info * req);
+int serve_dynamic (int fd, Req_info *req);
 
 int get_wday(char *wday)
 {
@@ -126,8 +127,9 @@ int check_modified_since( Req_info * req, struct stat *st)
 		
 	time_t t = get_timet(req->ifModified);
 	
-	printf("ims mtime:%ld\n",t);
-	printf("stat mtime:%ld\n",st->st_mtime);
+	//printf("ims mtime:%ld\n",t);
+	//printf("stat mtime:%ld\n",st->st_mtime);
+	
 	if ( t != (time_t) -1 && t >= st->st_mtime ) {
 		return 1;
 	}		
@@ -163,14 +165,15 @@ int serve_request(int fd, Req_info *req){
 			return 1;
 		}		
 	}
-	else {						/* dynamic */
+	else {	
+		/* dynamic */
 		if(!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
 			req->status = 403;
 			sws_response(fd, req);
 			return 1;
 		}
 		/* req' uri*/
-		//server_dynamic(fd, req)
+		serve_dynamic(fd, req);
 	}
 	return 0;
 }
@@ -286,7 +289,64 @@ int serve_static(int fd, Req_info *req, int fsize){
 	return 0;
 }
 
-int serve_dynamic(){
+void set_envs(Req_info *req)
+{
+	if ( strlen(req->query) > 0  )
+		setenv("QUERY_STRING",req->query,1 );
+}
+void unset_envs(Req_info *req)
+{
+	unsetenv("QUERY_STRING");
+}
+
+extern char ** environ;
+/* DO GET CGI */
+int serve_dynamic( int fd, Req_info *req ){
+	char buf[MAXBUF];
+	char date[256];
+	char * list[] = {NULL};
+	pid_t pid;	
 	
-	return 0;
+	/* Send response headers to client */
+	sprintf(buf, "HTTP/1.0 200 OK\r\n");
+	get_timestamp(date);
+	sprintf(buf, "%sDate: %s\r\n",buf,date);
+	sprintf(buf, "%sServer: Four0Four\r\n", buf);
+	Send(fd, buf, strlen(buf), 0);
+	
+	pid = fork();
+	if (pid<0) {
+		req->status = 500;
+		sws_response(fd, req);
+		fprintf(stderr, "fork error.\n");
+		exit(1);
+	}
+	else if (pid == 0) {
+		/* write to fd instead of stdout*/
+		if ( dup2(fd, STDOUT_FILENO) == -1) {
+			req->status = 500;
+			sws_response(fd, req);
+			fprintf(stderr, "dup2 error.\n");
+			exit(1);
+		}
+		close(fd);
+		
+		set_envs(req);
+		if (execve(req->uri,list,environ) <0 ) {
+			fprintf(stderr, "execve error.\n");
+			exit(1);
+		}
+		unset_envs(req);	
+		exit(0);	
+		//return 0;
+	}
+	else {
+		int s;
+		if (waitpid(pid,&s,0) == -1) {
+			fprintf(stderr, "waitpid error.\n");
+			exit(1);
+		}
+		exit(0);
+	}
+
 }

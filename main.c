@@ -96,8 +96,8 @@ int main(int argc, char *argv[])
     optInfo.dir= *argv;
     optInfo.dir = realpath(optInfo.dir,NULL);
     check_path(optInfo.dir);
-    check_path(optInfo.cgiDir);
 	optInfo.cgiDir = realpath(optInfo.cgiDir,NULL);
+    check_path(optInfo.cgiDir);	
 	if (optInfo.logFile) {
 		char temp[256];
 		strcpy(temp,optInfo.logFile);

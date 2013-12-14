@@ -163,6 +163,18 @@ void process_path(char * dir)
     }
 }
 
+void get_GET_query(Req_info * req, char * source)
+{
+	char * tmp = strstr(source,"?");
+	int i= 0;
+	if (tmp != NULL && req->method == GET) { 
+		strcpy(req->query,tmp+1);
+	}
+	if (tmp != NULL)
+		*tmp = '\0';
+		
+	printf("query:%s\n",req->query);
+}
 
 /**
  * We only need to implement [ path ], at this point, uri doesn't contain SP
@@ -219,20 +231,26 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         
     }
     else if (strncmp(req->uri,"/cgi-bin/",9) == 0) {
-        req->cgi=DO_CGI;
         tmp = req->uri;
         tmp += 9;
 		strncpy(rest,tmp,256);
 		
 		if (optInfo->cgiDir != NULL) {
+			req->cgi=DO_CGI;
 			printf("in cgi processing:%s\n",rest);
 			process_path(rest);
 			printf("afer:%s\n",rest);
+			get_GET_query(req,rest);
         	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest);	
+			
 		}		
 		else {
+			char tmp2[256];
+			strcpy(tmp2,req->uri);
 			printf("processing:%s\n",req->uri);
 			process_path(req->uri);
+			printf("afer:%s\n",tmp2);
+			sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
 		}	
     }
 	else {
@@ -327,6 +345,19 @@ void parse_rest(int sock, char * buf, Req_info * req)
 		}
 		req->ifModified[i] = '\0';	
 	}
+	/*
+	tmp = strstr(buf,"Content-Length:");
+	int i= 0;
+	if (tmp != NULL) { 
+		char len[10];
+		tmp += 15;
+		while ( *tmp++ != '\r' and i<10) {
+			len[i++] = *tmp;
+		}
+		req->contLen = atoi(len);	
+	}
+	printf("len:%d\n",req->contLen);
+	*/
 }
 
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
@@ -372,6 +403,8 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         sws_response(sock, req);
         return;
     }
+	if (req->method == POST)
+		
 	//printf("rest:%s\n",buf);
 	parse_rest(sock,buf,req);
 	//sws_response(sock, req);

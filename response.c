@@ -29,7 +29,7 @@ int err_response(int fd, int status) {
 	char buf[MAXBUF], body[MAXBUF], msg[LINESIZE];
 	get_status_msg(status, msg);
 	char date[256];
-	sprintf(body, "<!DOCTYPE html><html><title>SWS Error</title>\r\n");
+	sprintf(body, "<!DOCTYPE html><html><title>SWS Response</title>\r\n");
 	sprintf(body, "%s<body>%d: %s\r\n", body, status, msg);
 	sprintf(body, "%s May the force be with you.</body></html>\r\n", body);
 	

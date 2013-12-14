@@ -18,6 +18,8 @@ typedef struct req_info {
 	char clientIp[INET_ADDRSTRLEN]; /* for logging */
 	char recvTime[256];				/* for logging */
 	char ifModified[128];
+	char query[256];				/*for cgi*/
+	char msg_body[1024];			/*for post*/
 }Req_info;
 
 

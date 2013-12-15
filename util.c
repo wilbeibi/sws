@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <magic.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -145,30 +146,24 @@ int Readline(int fd, char* buf)
  * get the mimetype of a file
  * @path  absolute path of the file
  * 
- * return a char* of "type/subtype"
+ * return a const char* of "type/subtype"
  */
-char* getmime(char *path)
+const char* getmime(char *path)
 {
-    char cmd[484];
-    sprintf(cmd, "file -i %s | cut -d ':' -f2 | cut -d ';' -f1 | tr -d ' '", 
-            path);
-
-    FILE* f;
-    if ((f=popen(cmd, "r"))==NULL) {
-        warn("popen");
+    magic_t coo=magic_open(MAGIC_MIME_TYPE);
+    if (coo==NULL) {
+        warn("magic_open");
         return NULL;
     }
 
-    char *ret=(char*)malloc(64);
+    if (magic_load(coo, NULL)==-1) {
+        warn("magic_load");
+        return NULL;
+    }
+
+    const char *ret=magic_file(coo, path);
     if (ret==NULL)
-        return NULL;
+        warn("magic_file");
 
-    int n;
-    if ((n=read(fileno(f), ret, 64))==-1)
-        return NULL;
-
-    /* trunc last '\n'. It can't be trunced in shell script */
-    n=n-1<0 ? 0 : n-1;
-    ret[n]=0;
     return ret;
 }

@@ -40,7 +40,8 @@
 
 int serve_static (int fd, Req_info *req, int fsize);
 int serve_dir (int fd, Req_info * req);
-int serve_dynamic (int fd, Req_info *req);
+int serve_GET_dynamic (int fd, Req_info *req);
+int serve_POST_dynamic (int fd, Req_info *req);
 
 int get_wday(char *wday)
 {
@@ -188,7 +189,10 @@ int serve_request(int fd, Req_info *req){
 			return 1;
 		}
 		/* req' uri*/
-		return serve_dynamic(fd, req);
+		if (req->method == GET)
+			return serve_GET_dynamic(fd, req);
+		else if (req->method == POST)
+			return serve_POST_dynamic(fd, req);
 	}
 	return 0;
 }
@@ -244,13 +248,12 @@ int serve_dir(int fd, Req_info * req) {
 	sprintf(content, "%s<tr><th colspan='5'><hr></th></tr></table><br/><span>Four0Four Server page</span></body></html>",content);	
 	closedir(dp);
 	
-    char *mime=getmime(req->uri);
 	if (_simple_response !=1 ) {
 		sprintf(buf, "HTTP/1.0 200 OK\r\n");
 		get_timestamp(date);
 		sprintf(buf, "%sDate: %s\r\n",buf,date);
 		sprintf(buf, "%sServer: Four0Four\r\n", buf);
-		sprintf(buf, "%sContent-type: %s\r\n", buf, mime);
+		sprintf(buf, "%sContent-type: text/html\r\n", buf);
 		sprintf(buf, "%sContent-length: %d\r\n\r\n", buf, (int)strlen(content));
 		Send(fd, buf, strlen(buf), 0);
 	}
@@ -258,7 +261,6 @@ int serve_dir(int fd, Req_info * req) {
 	if (_head_response != 1)
 		Send(fd, content, strlen(content), 0);
 		
-    free(mime);
 	req->contLen = (int)strlen(content);
 	logging(req);
 	return 0;
@@ -287,13 +289,14 @@ int serve_static(int fd, Req_info *req, int fsize){
 	}
 	Close(datafd);
 	
+    const char* mime=getmime(req->uri);
 	if (_simple_response !=1 ) {
 		/* Send response headers to client */
 		sprintf(buf, "HTTP/1.0 200 OK\r\n");
 		get_timestamp(date);
 		sprintf(buf, "%sDate: %s\r\n",buf,date);
 		sprintf(buf, "%sServer: Four0Four\r\n", buf);
-		sprintf(buf, "%sContent-type: text/html\r\n", buf);
+		sprintf(buf, "%sContent-type: %s\r\n", buf, mime==NULL ? "text/html" : mime);
 		sprintf(buf, "%sContent-length: %d\r\n\r\n", buf,fsize);
 		Send(fd, buf, strlen(buf), 0);
 	}
@@ -310,17 +313,34 @@ int serve_static(int fd, Req_info *req, int fsize){
 
 void set_envs(Req_info *req)
 {
-	if ( strlen(req->query) > 0  )
-		setenv("QUERY_STRING",req->query,1 );
+	
+	if(req->method == GET) {
+		setenv("REQUEST_METHOD","GET",1);
+		if ( strlen(req->query) > 0  )
+			setenv("QUERY_STRING",req->query,1 );
+	}
+	
+	else if(req->method == POST) {
+		char len[10];
+		setenv("REQUEST_METHOD","POST",1);
+		sprintf(len, "%d", req->contLen);
+		setenv("CONTENT_LENGTH",len,1);
+		if ( strlen(req->query) > 0  )
+			setenv("QUERY_STRING",req->query,1);
+	}
+		
+		
 }
 void unset_envs(Req_info *req)
 {
 	unsetenv("QUERY_STRING");
+	unsetenv("REQUEST_METHOD");
+	unsetenv("CONTENT_LENGTH");
 }
 
 extern char ** environ;
 /* DO GET CGI */
-int serve_dynamic( int fd, Req_info *req ){
+int serve_GET_dynamic( int fd, Req_info *req ){
 	char buf[MAXBUF];
 	char date[256];
 	char * list[] = {NULL};
@@ -360,11 +380,97 @@ int serve_dynamic( int fd, Req_info *req ){
 		//return 0;
 	}
 	else {
-		int s;
-		if (waitpid(pid,&s,0) == -1) {
+		if (waitpid(pid,NULL,0) == -1) {
 			fprintf(stderr, "waitpid error.\n");
 			exit(1);
 		}
 		exit(0);
 	}
 }
+
+int serve_POST_dynamic( int fd, Req_info *req ){
+	int p1[2];
+	int p2[2];
+	pid_t pid;
+	char buf[MAXBUF];
+	char date[256];
+	
+	/* Send response headers to client */
+	sprintf(buf, "HTTP/1.0 200 OK\r\n");
+	get_timestamp(date);
+	sprintf(buf, "%sDate: %s\r\n",buf,date);
+	sprintf(buf, "%sServer: Four0Four\r\n", buf);
+	Send(fd, buf, strlen(buf),0);	
+	
+	if (pipe(p1) < 0) {
+		req->status = 500;
+		sws_response(fd, req);
+		fprintf(stderr, "pipe1 error.\n");
+		exit(1);
+	}
+	if (pipe(p2) < 0) {
+		req->status = 500;
+		sws_response(fd, req);
+		fprintf(stderr, "pipe2 error.\n");
+		exit(1);
+	}
+	set_envs(req);
+	pid = fork();
+	if (pid < 0) {
+		req->status = 500;
+		sws_response(fd, req);
+		fprintf(stderr, "fork error.\n");
+		exit(1);	
+	}
+	else if (pid == 0) {
+		// read from pipe1 instead of stdin, it means get data from parent
+		if (dup2(p1[0],STDIN_FILENO)==-1) {
+				req->status = 500;
+				sws_response(fd, req);
+				fprintf(stderr, "dup2 for pipe1 error.\n");
+				exit(1);
+		}
+		close(p1[0]);
+		//write to pipe2 instead of stdout
+		if (dup2(p2[1],STDOUT_FILENO) == -1) {
+				req->status = 500;
+				sws_response(fd, req);
+				fprintf(stderr, "dup2 for pipe2 error.\n");
+				exit(1);
+		}
+		close(p2[1]);
+		// execute the program
+		
+		if (execl(req->uri,req->uri,NULL) < 0) {
+			fprintf(stderr, "execl error.\n");
+			exit(1);
+		}
+			
+		exit(0);		
+	}
+	else {
+		close(p1[0]);
+		close(p2[1]);
+
+		// pass msg body to pipe1
+		Write(p1[1],req->msg_body,strlen(req->msg_body));
+		close(p1[1]);
+		
+		// read result from children via pipe2 and send back to client
+		char c;
+		while (read(p2[0],&c,1) > 0) {
+			Send(fd,&c,1,0);
+		}
+		
+		if (waitpid(pid,NULL,0) == -1) {
+			fprintf(stderr, "waitpid error.\n");
+			//exit(1);
+		}		
+		exit(0);
+	}
+}
+
+
+
+
+

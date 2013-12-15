@@ -1,0 +1,1 @@
+CFLAGS=-std=gnu99 -Wall -DLINUX -D_GNU_SOURCE -lbsd

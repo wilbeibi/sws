@@ -9,7 +9,8 @@
 #include "requests.h"
 
 static void
-rd_timeout(int sig) {
+rd_timeout(int sig)
+{
     // response to client of 408?
     // log warn: read timeout
     (void)err_response(_sock, 408);
@@ -17,7 +18,8 @@ rd_timeout(int sig) {
 }
 
 static void
-wt_timeout(int sig) {
+wt_timeout(int sig)
+{
     // log warn: write timeout
     exit(0);
 }
@@ -42,22 +44,23 @@ void init_req(Req_info * req)
 static int 
 read_req_line(int sock, Req_info *req, char *buf)
 {
-    int ret=0;	
-	while(1) {
-		if ((ret=Readline(sock, buf))==-1) {
-	        req->status=500;
-	        break;
-	    } else if (strcmp(buf,"\r\n") == 0){
-			continue;
-		} else if(ret<2 || buf[ret-2] !='\r'|| ret > MAXBUF) {
-			req->status=400;
-	         break;
-	    } else
-			break;
-	}
-	if (req->status != 200)
-		return -1;
-		
+    int ret=0;    
+    while(1) {
+        if ((ret=Readline(sock, buf))==-1) {
+            req->status=500;
+            break;
+        } else if (!strcmp(buf,"\r") || ret==1){
+            continue;
+        } else if (ret > MAXBUF) {
+            req->status=400;
+            break;
+        } else
+            break;
+    }
+
+    if (req->status != 200)
+        return -1;
+        
     return ret;
 }
 
@@ -66,34 +69,35 @@ read_req_line(int sock, Req_info *req, char *buf)
  * into read_headers and read_body...but we read headeers only now.
  */
 static int
-read_rest(int sock, Req_info *req, char *buf)
+read_rest(int sock, Req_info *req)
 {
     int ret;
     int tot=0;
-	char * tmp = buf;
+    char tmp[MAXBUF];
     while ((ret=Readline(sock, tmp))) {
         if (ret==-1) {
             req->status=500;
-            return ret;
+            return -1;
         }
         if (ret>=MAXBUF) {
             req->status=400;
-            return ret;
+            return -1;
         }
-        tmp+=ret;
         tot+=ret;
         if (tot>=MAXBUF) {
             req->status=400;
-            return ret;
+            return -1;
         }
-		if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
-			break;
-		if (strcmp(tmp-4,"\r\n\r\n") == 0)
-			break;
+        if (!strcmp(tmp, "\r") || ret==1)
+            break;
+        // if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
+        //     break;
+        // if (strcmp(tmp-4,"\r\n\r\n") == 0)
+        //     break;
     }
     return tot;
 }
-/*
+
 void process_path(char * uri)
 {
     // path convertion, first tokenize, then combine up 
@@ -130,7 +134,8 @@ void process_path(char * uri)
     }
     strcpy(uri, buf);
 }
-*/
+
+/*
 void process_path(char * dir)
 {
     char * tmp, *tmp2;
@@ -162,11 +167,12 @@ void process_path(char * dir)
         continue;
     }
 }
+*/
 
 void get_GET_query(Req_info * req, char * source)
 {
 	char * tmp = strstr(source,"?");
-	int i= 0;
+	// int i= 0;
 	if (tmp != NULL && req->method == GET) { 
 		strcpy(req->query,tmp+1);
 	}
@@ -187,31 +193,43 @@ void get_GET_query(Req_info * req, char * source)
  */
 int parse_uri(Req_info * req, Arg_t *optInfo)
 {
-    char * tmp = req->uri;
+    char _uri[256]; strcpy(_uri, req->uri);
+    char *uri=strtok(_uri, "?");
+    (void)strtok(NULL, "?");
+    char *gar=strtok(NULL, "?");
+    if (gar!=NULL) {
+        req->status=400;
+        return -1;
+    }
+    char *tmp=uri;
+
     char usr[256];
     char rest[256];
     int i;
 	req->cgi=NO_CGI;
+
+	printf("original uri:%s\n", uri);
 	/* http://babla. should also be valid
     if (req->uri[0] != '/') {
         req->status = 404;
         return -1;
     }
 	*/
+
 	/* According to sws man page, request for user home should start with '~'  */
-    if (strncmp(req->uri,"/~",2) == 0) {
+    if (strncmp(uri,"/~",2) == 0) {
         tmp += 2;
         i = 0;
         while (*tmp != '/' ) {
-		/* there must be a slash after the user name, otherwise it's invalid*/
-			if ( *tmp == '\0') {
-				 req->status=404;
-		            return -1;	
-			}
+        /* there must be a slash after the user name, otherwise it's invalid*/
+            if ( *tmp == '\0') {
+                 req->status=404;
+                    return -1;    
+            }
             usr[i++] = *tmp++;
         }
         usr[i]='\0';
-		
+        
         /* if user not exist, return 404 */
         struct passwd *pwd;
         if ((pwd=getpwnam(usr))==NULL) {
@@ -224,14 +242,15 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		process_path(rest);		
 		printf("afer:%s\n",rest);
 		#ifdef __APPLE__
-			sprintf(req->uri,"/Users/%s/Desktop/%s",usr,rest);
+			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
 		#else	
-			sprintf(req->uri,"/home/%s/sws/%s",usr,rest);
+			sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
 		#endif
         
     }
-    else if (strncmp(req->uri,"/cgi-bin/",9) == 0) {
-        tmp = req->uri;
+    else if (strncmp(uri,"/cgi-bin/",9) == 0) {
+        req->cgi=DO_CGI;
+        tmp = uri;
         tmp += 9;
 		strncpy(rest,tmp,256);
 		
@@ -241,8 +260,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 			process_path(rest);
 			printf("afer:%s\n",rest);
 			get_GET_query(req,rest);
-        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest);	
-			
+        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);	
 		}		
 		else {
 			char tmp2[256];
@@ -250,17 +268,18 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 			printf("processing:%s\n",req->uri);
 			process_path(req->uri);
 			printf("afer:%s\n",tmp2);
-			sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
+			sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
 		}	
     }
-	else {
-		char tmp2[256];
-		strcpy(tmp2,req->uri);
-		printf("processing:%s\n",tmp2);
-		process_path(tmp2);
-		printf("afer:%s\n",tmp2);
-		sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
-	}	
+    else {
+        char tmp2[256];
+        strcpy(tmp2,req->uri);
+        printf("processing:%s\n",req->uri);
+        process_path(tmp2);
+        printf("afer:%s\n",tmp2);
+        sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
+    }
+
     return 0;
 }
 
@@ -277,59 +296,71 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
  */
 int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 {    
-    char method[10], version[20];
-    
-    bzero(method,10);
-    bzero(req->uri,256);
-    bzero(version,20);
-    sscanf(buf, "%s %s %s", method, req->uri, version);
+    char *method;
+    char *uri;
+    char *version;
+    char *gar;
+
+    method=strtok(buf, " ");
 
     if (strcmp(method, "GET") == 0)
         req->method=GET;
     else if (strcmp(method, "POST") == 0)
         req->method=POST;
     else if (strcmp(method, "HEAD") == 0) {
-		req->method=HEAD;
-		_head_response = 1;
-	}
-    else {
+        req->method=HEAD;
+        _head_response = 1;
+    } else {
         req->status=501;
         return -1;
     }
 
-    if (version[0]==0) {
-        // version is not specified, if is GET, validate it as HTTP/0.9 Simple request
-		if ((req->method == GET) && req->uri[0] != '\0')
-			_simple_response = 1;
-		else {
-			req->status=400;
-	        return -1;
-		}
+    uri=strtok(NULL, " ");
+    if (uri==NULL) {
+        req->status=400;
+        return -1;
+    }
+
+    strcpy(req->uri, uri);
+
+    version=strtok(NULL, " ");
+    if (version==NULL) {
+        if (req->method == GET || req->method==HEAD)
+            _simple_response = 1;
+        else {
+            req->status=400;
+            return -1;
+        }
     } else {
-	/*
+        /* garbage */
+        gar=strtok(NULL, " ");
+        if (gar!=NULL) {
+            req->status=400;
+            return -1;
+        }
         char *http=strstr(version, "HTTP/");
         if (http==NULL || http!=version) {
             req->status=400;
             return -1;
         }
         http+=5;
+        char *ver=strtok(http, " ");
+        gar=strtok(NULL, " ");
+        if (gar!=NULL) {
+            req->status=400;
+            return -1;
+        }
         int major=-1;
         int minor=-1;
-        sscanf(http, "%d.%d", &major, &minor);
+        sscanf(ver, "%d.%d", &major, &minor);
         if ((major==1 && minor==0)
             || (major==0 && minor==9)) {
             return 0;
         }
         req->status=505;
         return -1;
-*/
-		
     }
 
-    if (req->uri[0]==0) {
-        req->status=400;
-        return -1;
-    }
     
     return 0;
 }
@@ -363,7 +394,7 @@ void parse_rest(int sock, char * buf, Req_info * req)
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
     _sock=sock;
-    signal(SIGALRM, rd_timeout);
+    Signal(SIGALRM, rd_timeout);
     alarm(READ_TIMEOUT);
 
     int ret;
@@ -397,8 +428,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
      * buf[0] because we didn't do buf+=w+1. so read_rest will override
      * request-line, which is acceptable here.
      */
-    bzero(buf, MAXBUF);
-    ret=read_rest(sock,req,buf);
+    ret=read_rest(sock,req);
     if (ret==-1) {
         sws_response(sock, req);
         return;
@@ -414,10 +444,13 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 		
 	//sws_response(sock, req);
 	printf("uri:%s\n",req->uri);
-    signal(SIGALRM, wt_timeout);
+
     alarm(0);
+    signal(SIGALRM, wt_timeout);
+    Signal(SIGALRM, wt_timeout);
     alarm(WRITE_TIMEOUT);
+
     serve_request(sock,req);
+
     return;
-	
 }

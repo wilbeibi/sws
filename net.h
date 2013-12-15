@@ -4,14 +4,15 @@
 
 #ifndef _NET_H_
 #define _NET_H_
-
 typedef struct arg_t{
     char *cgiDir;    /* -c dir */
     char *ipAddr;    /* -i address */
     char *logFile;   /* -l file */
-    char *port;	     /* -p port */
+    char *port;      /* -p port */
     char *dir;       /* service directory*/
-}Arg_t;
+} Arg_t;
+
+char *logDir;
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -33,7 +34,7 @@ typedef struct arg_t{
 // POSIX
 #endif
 */
-#define WATCH(fmt, ...)							\
+#define WATCH(fmt, ...)                            \
     if (DEBUG) printf(fmt, __VA_ARGS__);
 
 #define SIZE 1024
@@ -43,7 +44,10 @@ typedef struct arg_t{
 #define READ_TIMEOUT 60
 #define WRITE_TIMEOUT 120
 
+
 char * logDir;
+struct pidfh *pfh;
+FILE* pidfp;
 
 /* typedef struct sockaddr SA; */
 
@@ -70,7 +74,7 @@ ssize_t Send(int sock, const void *buf, size_t count,int flag);
 sig_t Signal(int sig, sig_t func);
 int Readline(int fd, char* buf);
 void Chroot(char * dir);
-
+const char* getmime(char *);
 
 /****************************************
  *    Network related functions in net.c 
@@ -79,4 +83,4 @@ void Chroot(char * dir);
 int server_listen(Arg_t *optInfo);
 
 
-#endif	/* _NET_H_ */
+#endif    /* _NET_H_ */

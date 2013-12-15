@@ -100,7 +100,7 @@ void logging(Req_info *req) {
 		}		
 		req->fstLine[strlen(req->fstLine)-2] = '\0';
 		sprintf(msg, "%s %s \"%s\" %d %d\n",req->clientIp,req->recvTime,req->fstLine,req->status,req->contLen);
-		int n = fwrite(msg,sizeof(char),strlen(msg),fp);
+		(void)fwrite(msg,sizeof(char),strlen(msg),fp);
 		fclose(fp);
 	}	
 }

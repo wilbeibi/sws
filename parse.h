@@ -22,7 +22,6 @@ typedef struct req_info {
 	char msg_body[1024];			/*for post*/
 }Req_info;
 
-
 void read_sock(int sock, Req_info *req, Arg_t *optInfo);
 
 #endif

@@ -3,21 +3,18 @@
 #include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/types.h>
+#include <fcntl.h>
+#include <err.h>
 #include <libgen.h>
 #include <dirent.h>
 
-#ifdef __APPLE__
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <stdlib.h>
 #include <string.h>
-#else
-
-#include <bsd/string.h>
-#include <bsd/stdlib.h>
-
-#endif
 
 #include "net.h"
 #include "parse.h"
@@ -175,9 +172,9 @@ int serve_request(int fd, Req_info *req){
 		}
 		/* req' uri*/
 		if (req->method == GET)
-			serve_GET_dynamic(fd, req);
+			return serve_GET_dynamic(fd, req);
 		else if (req->method == POST)
-			serve_POST_dynamic(fd, req);
+			return serve_POST_dynamic(fd, req);
 	}
 	return 0;
 }
@@ -195,7 +192,6 @@ int serve_dir(int fd, Req_info * req) {
 	struct dirent *dirp;
 	char last_modified[256];
 	char path[256];
-	char permission[20];
 	if (req->uri[strlen(req->uri)-1]!='/')
 		strcat(req->uri,"/");
 	sprintf(index, "%sindex.html",req->uri);
@@ -209,7 +205,7 @@ int serve_dir(int fd, Req_info * req) {
 		sws_response(fd, req);
 		return 1;
 	}
-	sprintf(content,"<!DOCTYPE><html><head><title>Four0Four sws</title></head><body><h1>Index of %s:</h1><br/><table><tr><th align='left'>Permission:</th><th align='left'>Name:</th><th align='right'>Last_Modified:</th></tr><tr><th colspan='5'><hr></th></tr>",basename(req->uri));	
+	sprintf(content,"<!DOCTYPE><html><head><title>Four0Four sws</title></head><body><h1>Index of %s:</h1><br/><table><tr><th align='left'>Name:</th><th align='right'>Last_Modified:</th></tr><tr><th colspan='5'><hr></th></tr>",basename(req->uri));	
 	
 	while ((dirp = readdir(dp)) != NULL ) {
 		if (dirp->d_name[0] != '.') {
@@ -220,14 +216,13 @@ int serve_dir(int fd, Req_info * req) {
 				}
 			} 
 			else {
-				strmode(sb.st_mode, permission);
 				struct tm * tmp;
 				tmp = gmtime(&sb.st_mtime);
 				char *Wday[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
 				char *Mth[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
 				sprintf(last_modified,"%s, %d %s %d %d:%d:%d GMT",Wday[tmp->tm_wday],(tmp->tm_mday),Mth[tmp->tm_mon],(1900+tmp->tm_year),(tmp->tm_hour),(tmp->tm_min),(tmp->tm_sec));	
 			}			
-			sprintf(content, "%s<tr><td align='left'>%s</td><td align='left'>%s</td><td align='right'>%s</td></tr>",content,permission,dirp->d_name,last_modified);	
+			sprintf(content, "%s<tr><td align='left'>%s</td><td align='right'>%s</td></tr>",content,dirp->d_name,last_modified);	
 		}
 	}		
 	sprintf(content, "%s<tr><th colspan='5'><hr></th></tr></table><br/><span>Four0Four Server page</span></body></html>",content);	
@@ -261,24 +256,30 @@ int serve_static(int fd, Req_info *req, int fsize){
 		req->status = 403;
 		sws_response(fd, req);
 		fprintf(stderr, "open error.\n");
-		return 1;
+        err_response(fd, 500);
+        exit(500);
 	}
 	
 	if((datap = mmap(0, fsize, PROT_READ, MAP_PRIVATE, datafd, 0)) == MAP_FAILED){
 		req->status = 403;
 		sws_response(fd, req);
 		fprintf(stderr, "open error.\n");
-		return 1;
+        err_response(fd, 500);
+        exit(500);
 	}
 	Close(datafd);
 	
+	const char* mime;
+#ifdef __linux	
+    mime=getmime(req->uri);
+#endif
 	if (_simple_response !=1 ) {
 		/* Send response headers to client */
 		sprintf(buf, "HTTP/1.0 200 OK\r\n");
 		get_timestamp(date);
 		sprintf(buf, "%sDate: %s\r\n",buf,date);
 		sprintf(buf, "%sServer: Four0Four\r\n", buf);
-		sprintf(buf, "%sContent-type: text/html\r\n", buf);
+		sprintf(buf, "%sContent-type: %s\r\n", buf, mime==NULL ? "text/html" : mime);
 		sprintf(buf, "%sContent-length: %d\r\n\r\n", buf,fsize);
 		Send(fd, buf, strlen(buf), 0);
 	}
@@ -351,7 +352,7 @@ int serve_GET_dynamic( int fd, Req_info *req ){
 			exit(1);
 		}
 		close(fd);
-		
+
 		set_envs(req);
 		if (execve(req->uri,list,environ) <0 ) {
 			fprintf(stderr, "execve error.\n");
@@ -368,7 +369,6 @@ int serve_GET_dynamic( int fd, Req_info *req ){
 		}
 		exit(0);
 	}
-
 }
 
 int serve_POST_dynamic( int fd, Req_info *req ){

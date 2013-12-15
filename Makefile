@@ -1,10 +1,11 @@
 UNAME:=$(shell uname -s)
 PROG= sws
 OBJS= main.o net.o util.o parse.o response.o requests.o 
-#CFLAGS=-g -std=gnu99 -Wall -pedantic-errors
 ifeq ($(UNAME),Darwin)
 else
-LFLAG=-lbsd 
+CFLAGS=-g -std=gnu99 -Wall -pedantic-errors
+LFLAG=-lmagic
+LFLAG:=${LFLAG} -lbsd
 endif
 all: ${PROG}
 ${PROG}: ${OBJS}

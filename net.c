@@ -1,6 +1,9 @@
 /* $$ net.c
  *  
  */
+#ifdef __linux
+#include <bsd/libutil.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +25,9 @@
 
 static void child_handler(int sig);
 
+/* pfh is defined in main.c */
+extern struct pidfh *pfh;
+
 int server_listen( Arg_t *optInfo){
     struct addrinfo hints, *res;
     char ipstr[INET_ADDRSTRLEN];
@@ -35,11 +41,11 @@ int server_listen( Arg_t *optInfo){
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE; 
     if(optInfo->ipAddr == NULL){
-		hints.ai_flags = AI_PASSIVE;
-		Getaddrinfo(NULL, optInfo->port, &hints, &res);
+        hints.ai_flags = AI_PASSIVE;
+        Getaddrinfo(NULL, optInfo->port, &hints, &res);
     }
     else{
-		Getaddrinfo(optInfo->ipAddr, optInfo->port, &hints, &res);
+        Getaddrinfo(optInfo->ipAddr, optInfo->port, &hints, &res);
     }
     
     listenfd = Socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -48,11 +54,13 @@ int server_listen( Arg_t *optInfo){
     Bind(listenfd, res->ai_addr, res->ai_addrlen);
     Listen(listenfd, LISTENQ);
 
+    Signal(SIGCHLD, child_handler);
+
     while(1){
-		pid_t childpid;
-		struct sockaddr_in* cliAdr = (struct sockaddr_in*)&client_addr;
-		int ipAddr = cliAdr->sin_addr.s_addr;
-		clientlen = sizeof(client_addr);
+        pid_t childpid;
+        struct sockaddr_in* cliAdr = (struct sockaddr_in*)&client_addr;
+        int ipAddr = cliAdr->sin_addr.s_addr;
+        clientlen = sizeof(client_addr);
 
         Req_info req;
         struct timeval to;
@@ -65,33 +73,36 @@ int server_listen( Arg_t *optInfo){
         FD_SET(listenfd, &rdy);
 
         int ret=select(listenfd+1, &rdy, 0, 0, &to);
-        if (ret==-1) {
-            req.status=500;
+        if (ret==-1)
             continue;
-        } else if (ret==0) {
-            req.status=502;
+        else if (ret==0)
             continue;
-        } else if (FD_ISSET(listenfd, &rdy)==0) {
+        else if (FD_ISSET(listenfd, &rdy)==0)
             // do some fun stuff...
             continue;
-        }
 
-		connfd = Accept(listenfd, (struct sockaddr *) &client_addr, &clientlen);
-		printf ("Server is up on port:%s.\n", optInfo->port);
-	
-		/* Communicate with client */
-		if( (childpid = fork()) == 0){
-			Close(listenfd);
-			Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
+        connfd = Accept(listenfd, (struct sockaddr *) &client_addr, &clientlen);
+        // there is noneed to pop this for each connection
+        // printf ("Server is up on port:%s.\n", optInfo->port);
+    
+        /* Communicate with client */
+        if( (childpid = fork()) == 0){
+#ifdef __linux
+            pidfile_close(pfh);
+#else
+			fclose( pidfp );
+#endif
+            Signal(SIGTERM, SIG_DFL);
+            Close(listenfd);
+            Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
 			memset(req.clientIp,0,sizeof(req.clientIp));
 			strncpy(req.clientIp,ipstr,INET_ADDRSTRLEN);
-			read_sock(connfd, &req, optInfo);	
-		
-			exit(0);
-		}else {
-			Signal(SIGCHLD, child_handler);
-		}
-		Close(connfd);
+            read_sock(connfd, &req, optInfo);    
+        
+            exit(0);
+        }
+        
+        Close(connfd);
     }
     freeaddrinfo(res);
     return connfd;
@@ -103,7 +114,7 @@ static void child_handler(int sig){
     pid_t p;
     int status;
     while( (p = waitpid(-1, &status, WNOHANG)) != -1)
-		;
+        ;
 }
 
 

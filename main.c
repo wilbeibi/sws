@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
     progname = argv[0];
 	FILE * fp = NULL;
 	logDir = NULL;
-
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
     optInfo.logFile = NULL;
@@ -122,13 +121,15 @@ int main(int argc, char *argv[])
     optInfo.dir= *argv;
     optInfo.dir = realpath(optInfo.dir,NULL);
     check_path(optInfo.dir);
-    check_path(optInfo.cgiDir);
-
+	optInfo.cgiDir = realpath(optInfo.cgiDir,NULL);
+    check_path(optInfo.cgiDir);	
 	if (optInfo.logFile) {
 		char temp[256];
 		strcpy(temp,optInfo.logFile);
 		check_path(dirname(temp));
 		logDir = strdup(optInfo.logFile);
+		if (logDir == NULL)
+			sys_err("strdup failed");
 		/*create log file if not exist*/
 		fp = fopen( logDir, "a" );
 		if (fp == NULL)
@@ -161,6 +162,7 @@ int main(int argc, char *argv[])
     }
     
     printf("running with %d\n", getpid());
+    
     server_listen(&optInfo);
 
     free(optInfo.port);

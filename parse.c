@@ -30,6 +30,7 @@ void init_req(Req_info * req)
 	req->contLen = 0;
     req->method = NOT_IMPLEMENTED;
     req->cgi = NO_CGI;
+	memset(req->ifModified,0,128);
 }
 
 /**
@@ -72,7 +73,6 @@ read_rest(int sock, Req_info *req)
 {
     int ret;
     int tot=0;
-    int hid=0;
     char tmp[MAXBUF];
     while ((ret=Readline(sock, tmp))) {
         if (ret==-1) {
@@ -88,19 +88,8 @@ read_rest(int sock, Req_info *req)
             req->status=400;
             return -1;
         }
-        if (!strcmp(tmp, "\r") || ret==1) {
-            req->header[hid][0][0]=0;
+        if (!strcmp(tmp, "\r") || ret==1)
             break;
-        }
-        char *hea=strtok(tmp, "=");
-        strcpy(req->header[hid][0], hea);
-        hea=strtok(NULL, "=");
-        if (hea==NULL) {
-            req->status=400;
-            return -1;
-        }
-        strcpy(req->header[hid][1], hea);
-        hid++;
         // if (tmp == (buf+2) && strcmp(buf,"\r\n") == 0)
         //     break;
         // if (strcmp(tmp-4,"\r\n\r\n") == 0)
@@ -146,6 +135,53 @@ void process_path(char * uri)
     strcpy(uri, buf);
 }
 
+/*
+void process_path(char * dir)
+{
+    char * tmp, *tmp2;
+    tmp = dir;
+    while ((tmp = strstr(tmp, "/..")) != NULL) {
+      if ( *(tmp+3) == '/' || *(tmp+3) == '\0') {
+        if (tmp == dir) {
+          strncpy(dir,"/\0",2);
+          break;
+        }
+        else if (tmp > dir) {
+           tmp2 = tmp-1;
+          while (tmp2>=dir) { // use tmp2 to find the slash before /../ 
+            if (*tmp2 == '/')
+              break;
+            tmp2 --;
+          }
+          tmp = tmp+3;
+          while(*tmp != '\0') {
+            (*tmp2++) = (*tmp++);
+          }
+          *tmp2 = '\0';
+          if (*dir == '\0')
+            strncpy(dir,"/\0",2);
+          tmp = dir;
+        }
+      }
+      else 
+        continue;
+    }
+}
+*/
+
+void get_GET_query(Req_info * req, char * source)
+{
+	char * tmp = strstr(source,"?");
+	// int i= 0;
+	if (tmp != NULL && req->method == GET) { 
+		strcpy(req->query,tmp+1);
+	}
+	if (tmp != NULL)
+		*tmp = '\0';
+		
+	printf("query:%s\n",req->query);
+}
+
 /**
  * We only need to implement [ path ], at this point, uri doesn't contain SP
  * Request-URI      = abs_path
@@ -159,7 +195,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 {
     char _uri[256]; strcpy(_uri, req->uri);
     char *uri=strtok(_uri, "?");
-    char *que=strtok(NULL, "?");
+    (void)strtok(NULL, "?");
     char *gar=strtok(NULL, "?");
     if (gar!=NULL) {
         req->status=400;
@@ -202,7 +238,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         }      
         strncpy(rest,tmp+1,256);
 		/* prevent spoofing */
-		printf("processing:%s\n",rest);
+		printf("in ~ processing:%s\n",rest);
 		process_path(rest);		
 		printf("afer:%s\n",rest);
 		#ifdef __APPLE__
@@ -219,47 +255,21 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		strncpy(rest,tmp,256);
 		
 		if (optInfo->cgiDir != NULL) {
-			printf("processing:%s\n",rest);
+			req->cgi=DO_CGI;
+			printf("in cgi processing:%s\n",rest);
 			process_path(rest);
 			printf("afer:%s\n",rest);
-        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);
+			get_GET_query(req,rest);
+        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);	
 		}		
 		else {
-            req->status=401;
-            return -1;
-			// printf("processing:%s\n",uri);
-			// process_path(uri);
-            // sprintf(req->uri,"%s",uri);
+			char tmp2[256];
+			strcpy(tmp2,req->uri);
+			printf("processing:%s\n",req->uri);
+			process_path(req->uri);
+			printf("afer:%s\n",tmp2);
+			sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
 		}	
-    }
-
-	else {
-		char * tmp2 = strdup(uri);
-		printf("processing:%s\n",tmp2);
-		process_path(tmp2);
-		printf("afer:%s\n",tmp2);
-		// sprintf(req->uri,"%s%s",optInfo->dir, (*tmp2=='/') ? (tmp2+1): tmp2 );
-		sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
-		free(tmp2);
-	}	
-
-    /* parse query string */
-    if (que!=NULL) {
-        int id=0;
-        char *mstt;
-        char *qtok=strtok_r(que, "&", &mstt);
-        while (qtok!=NULL) {
-            char *tok=strtok(qtok, "=");
-            strcpy(req->query[id][0], tok);
-            tok=strtok(NULL, "=");
-            if (tok==NULL) {
-                req->status=400;
-                return -1;
-            }
-            strcpy(req->query[id][1], tok);
-            id++;
-            qtok=strtok_r(NULL, "&", &mstt);
-        }
     }
 
     return 0;
@@ -346,6 +356,32 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
     return 0;
 }
 
+void parse_rest(int sock, char * buf, Req_info * req)
+{
+	char * tmp = strstr(buf,"If-Modified-Since:");
+	int i= 0;
+	if (tmp != NULL && req->method == GET) { 
+		tmp += 18;
+		while ( *tmp++ != '\r') {
+			req->ifModified[i++] = *tmp;
+		}
+		req->ifModified[i] = '\0';	
+	}
+	/*
+	tmp = strstr(buf,"Content-Length:");
+	int i= 0;
+	if (tmp != NULL) { 
+		char len[10];
+		tmp += 15;
+		while ( *tmp++ != '\r' and i<10) {
+			len[i++] = *tmp;
+		}
+		req->contLen = atoi(len);	
+	}
+	printf("len:%d\n",req->contLen);
+	*/
+}
+
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
     _sock=sock;
@@ -388,10 +424,15 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         sws_response(sock, req);
         return;
     }
-
-	printf("uri:%s\n", req->uri);
+	if (req->method == POST)
+		
+	//printf("rest:%s\n",buf);
+	parse_rest(sock,buf,req);
+	//sws_response(sock, req);
+	printf("uri:%s\n",req->uri);
 
     alarm(0);
+    signal(SIGALRM, wt_timeout);
     Signal(SIGALRM, wt_timeout);
     alarm(WRITE_TIMEOUT);
 

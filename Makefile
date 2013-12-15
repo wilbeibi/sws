@@ -3,15 +3,13 @@ PROG= sws
 OBJS= main.o net.o util.o parse.o response.o requests.o 
 CFLAGS=-g -std=gnu99 -Wall -pedantic-errors
 ifeq ($(UNAME),Darwin)
-all: ${PROG}
-${PROG}: ${OBJS}
-	@echo $@ depends on $?
-	cc ${CFLAGS} ${OBJS} -o ${PROG}
 else
+LFLAG=-lbsd 
+endif
 all: ${PROG}
 ${PROG}: ${OBJS}
 	@echo $@ depends on $?
-	cc ${CFLAGS} ${OBJS} -lbsd -o ${PROG}
-endif
+	cc ${CFLAGS} ${OBJS} ${LFLAG} -o ${PROG}
+
 clean:
 	rm -f *.o sws

@@ -155,7 +155,7 @@ char* getmime(char *path)
 
     FILE* f;
     if ((f=popen(cmd, "r"))==NULL) {
-        warn(1, "popen");
+        warn("popen");
         return NULL;
     }
 

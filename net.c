@@ -22,7 +22,6 @@
 
 static void child_handler(int sig);
 
-
 int server_listen( Arg_t *optInfo){
     struct addrinfo hints, *res;
     char ipstr[INET_ADDRSTRLEN];
@@ -84,6 +83,8 @@ int server_listen( Arg_t *optInfo){
 		if( (childpid = fork()) == 0){
 			Close(listenfd);
 			Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
+			memset(req.clientIp,0,sizeof(req.clientIp));
+			strncpy(req.clientIp,ipstr,INET_ADDRSTRLEN);
 			read_sock(connfd, &req, optInfo);	
 		
 			exit(0);

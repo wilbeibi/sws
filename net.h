@@ -4,6 +4,7 @@
 
 #ifndef _NET_H_
 #define _NET_H_
+
 typedef struct arg_t{
     char *cgiDir;    /* -c dir */
     char *ipAddr;    /* -i address */
@@ -11,9 +12,6 @@ typedef struct arg_t{
     char *port;	     /* -p port */
     char *dir;       /* service directory*/
 }Arg_t;
-
-
-
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -44,6 +42,8 @@ typedef struct arg_t{
 #define LINESIZE 8192 
 #define READ_TIMEOUT 60
 #define WRITE_TIMEOUT 120
+
+char * logDir;
 
 /* typedef struct sockaddr SA; */
 
@@ -77,8 +77,6 @@ void Chroot(char * dir);
  ****************************************/
 
 int server_listen(Arg_t *optInfo);
-
-
 
 
 #endif	/* _NET_H_ */

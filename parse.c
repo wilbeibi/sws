@@ -345,19 +345,19 @@ void parse_rest(int sock, char * buf, Req_info * req)
 		}
 		req->ifModified[i] = '\0';	
 	}
-	/*
+	
 	tmp = strstr(buf,"Content-Length:");
-	int i= 0;
+	i= 0;
 	if (tmp != NULL) { 
 		char len[10];
 		tmp += 15;
-		while ( *tmp++ != '\r' and i<10) {
+		while ( *tmp++ != '\r' && i<10) {
 			len[i++] = *tmp;
 		}
 		req->contLen = atoi(len);	
 	}
 	printf("len:%d\n",req->contLen);
-	*/
+
 }
 
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
@@ -405,8 +405,13 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     }
 	if (req->method == POST)
 		
-	//printf("rest:%s\n",buf);
+	printf("rest:%s\n",buf);
 	parse_rest(sock,buf,req);
+	
+	if (req->contLen > 0)
+		Read(sock, req->msg_body, req->contLen);
+	printf("body:%s\n",req->msg_body);
+		
 	//sws_response(sock, req);
 	printf("uri:%s\n",req->uri);
     signal(SIGALRM, wt_timeout);

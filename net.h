@@ -26,15 +26,15 @@ char *logDir;
 #include <uuid/uuid.h>
 #endif
 /*
-#elif __linux
-// linux
-#elif __unix // all unices not caught above
-// Unix
-#elif __posix
-// POSIX
-#endif
+  #elif __linux
+  // linux
+  #elif __unix // all unices not caught above
+  // Unix
+  #elif __posix
+  // POSIX
+  #endif
 */
-#define WATCH(fmt, ...)                            \
+#define WATCH(fmt, ...)							\
     if (DEBUG) printf(fmt, __VA_ARGS__);
 
 #define SIZE 1024

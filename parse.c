@@ -136,37 +136,37 @@ void process_path(char * uri)
 }
 
 /*
-void process_path(char * dir)
-{
-    char * tmp, *tmp2;
-    tmp = dir;
-    while ((tmp = strstr(tmp, "/..")) != NULL) {
-      if ( *(tmp+3) == '/' || *(tmp+3) == '\0') {
-        if (tmp == dir) {
-          strncpy(dir,"/\0",2);
-          break;
-        }
-        else if (tmp > dir) {
-           tmp2 = tmp-1;
-          while (tmp2>=dir) { // use tmp2 to find the slash before /../ 
-            if (*tmp2 == '/')
-              break;
-            tmp2 --;
-          }
-          tmp = tmp+3;
-          while(*tmp != '\0') {
-            (*tmp2++) = (*tmp++);
-          }
-          *tmp2 = '\0';
-          if (*dir == '\0')
-            strncpy(dir,"/\0",2);
-          tmp = dir;
-        }
-      }
-      else 
-        continue;
-    }
-}
+  void process_path(char * dir)
+  {
+  char * tmp, *tmp2;
+  tmp = dir;
+  while ((tmp = strstr(tmp, "/..")) != NULL) {
+  if ( *(tmp+3) == '/' || *(tmp+3) == '\0') {
+  if (tmp == dir) {
+  strncpy(dir,"/\0",2);
+  break;
+  }
+  else if (tmp > dir) {
+  tmp2 = tmp-1;
+  while (tmp2>=dir) { // use tmp2 to find the slash before /../ 
+  if (*tmp2 == '/')
+  break;
+  tmp2 --;
+  }
+  tmp = tmp+3;
+  while(*tmp != '\0') {
+  (*tmp2++) = (*tmp++);
+  }
+  *tmp2 = '\0';
+  if (*dir == '\0')
+  strncpy(dir,"/\0",2);
+  tmp = dir;
+  }
+  }
+  else 
+  continue;
+  }
+  }
 */
 
 void get_GET_query(Req_info * req, char * source)
@@ -221,10 +221,10 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         tmp += 1;
         i = 0;
         while (*tmp != '/' ) {
-        /* there must be a slash after the user name, otherwise it's invalid*/
+			/* there must be a slash after the user name, otherwise it's invalid*/
             if ( *tmp == '\0') {
-                 req->status=404;
-                    return -1;    
+				req->status=404;
+				return -1;    
             }
             usr[i++] = *tmp++;
         }
@@ -246,7 +246,6 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         #else    
             sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
         #endif
-        
     }
     else if (strncmp(uri,"/cgi-bin/",9) == 0) {
         req->cgi=DO_CGI;
@@ -260,7 +259,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
             process_path(rest);
             // printf("afer:%s\n",rest);
             get_GET_query(req,rest);
-            // sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);    
+            sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);    
         }        
         else {
             char tmp2[256];

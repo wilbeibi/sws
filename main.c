@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#ifdef __linux || __sun
+#ifdef __linux
 #include <bsd/libutil.h>
 #endif
 

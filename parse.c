@@ -104,11 +104,11 @@ void process_path(char * uri)
     char buf[256];
     char temp[256];
     char *bufp=buf;
-    int ind=0;
+    int ind=0, i, j;
     int len=strlen(uri);
     buf[0]='/';
     buf[1]=0;
-    for (int i=0; i<len; i++) {
+    for (i=0; i<len; i++) {
         while (i<len && uri[i]=='/') i++; 
         while (i<len && uri[i]!='/') temp[ind++]=uri[i++];
         temp[ind]=0;
@@ -117,7 +117,7 @@ void process_path(char * uri)
         if (strcmp(temp, "..")!=0) {
             *bufp='/';
             bufp++;
-            for (int j=0; j<ind; j++) {
+            for (j=0; j<ind; j++) {
                 *bufp=temp[j];
                 bufp++;
             }

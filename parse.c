@@ -104,11 +104,11 @@ void process_path(char * uri)
     char buf[256];
     char temp[256];
     char *bufp=buf;
-    int ind=0;
+    int ind=0, i, j;
     int len=strlen(uri);
     buf[0]='/';
     buf[1]=0;
-    for (int i=0; i<len; i++) {
+    for (i=0; i<len; i++) {
         while (i<len && uri[i]=='/') i++; 
         while (i<len && uri[i]!='/') temp[ind++]=uri[i++];
         temp[ind]=0;
@@ -117,7 +117,7 @@ void process_path(char * uri)
         if (strcmp(temp, "..")!=0) {
             *bufp='/';
             bufp++;
-            for (int j=0; j<ind; j++) {
+            for (j=0; j<ind; j++) {
                 *bufp=temp[j];
                 bufp++;
             }
@@ -136,37 +136,37 @@ void process_path(char * uri)
 }
 
 /*
-void process_path(char * dir)
-{
-    char * tmp, *tmp2;
-    tmp = dir;
-    while ((tmp = strstr(tmp, "/..")) != NULL) {
-      if ( *(tmp+3) == '/' || *(tmp+3) == '\0') {
-        if (tmp == dir) {
-          strncpy(dir,"/\0",2);
-          break;
-        }
-        else if (tmp > dir) {
-           tmp2 = tmp-1;
-          while (tmp2>=dir) { // use tmp2 to find the slash before /../ 
-            if (*tmp2 == '/')
-              break;
-            tmp2 --;
-          }
-          tmp = tmp+3;
-          while(*tmp != '\0') {
-            (*tmp2++) = (*tmp++);
-          }
-          *tmp2 = '\0';
-          if (*dir == '\0')
-            strncpy(dir,"/\0",2);
-          tmp = dir;
-        }
-      }
-      else 
-        continue;
-    }
-}
+  void process_path(char * dir)
+  {
+  char * tmp, *tmp2;
+  tmp = dir;
+  while ((tmp = strstr(tmp, "/..")) != NULL) {
+  if ( *(tmp+3) == '/' || *(tmp+3) == '\0') {
+  if (tmp == dir) {
+  strncpy(dir,"/\0",2);
+  break;
+  }
+  else if (tmp > dir) {
+  tmp2 = tmp-1;
+  while (tmp2>=dir) { // use tmp2 to find the slash before /../ 
+  if (*tmp2 == '/')
+  break;
+  tmp2 --;
+  }
+  tmp = tmp+3;
+  while(*tmp != '\0') {
+  (*tmp2++) = (*tmp++);
+  }
+  *tmp2 = '\0';
+  if (*dir == '\0')
+  strncpy(dir,"/\0",2);
+  tmp = dir;
+  }
+  }
+  else 
+  continue;
+  }
+  }
 */
 
 void get_GET_query(Req_info * req, char * source)
@@ -210,21 +210,21 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 
 	// printf("original uri:%s\n", uri);
 	/* http://babla. should also be valid
-    if (req->uri[0] != '/') {
-        req->status = 404;
-        return -1;
-    }
+	   if (req->uri[0] != '/') {
+	   req->status = 404;
+	   return -1;
+	   }
 	*/
 
 	/* According to sws man page, request for user home should start with '~'  */
-    if (strncmp(uri,"/~",2) == 0) {
-        tmp += 2;
+    if (strncmp(uri,"/~",1) == 0) {
+        tmp += 1;
         i = 0;
         while (*tmp != '/' ) {
-        /* there must be a slash after the user name, otherwise it's invalid*/
+			/* there must be a slash after the user name, otherwise it's invalid*/
             if ( *tmp == '\0') {
-                 req->status=404;
-                    return -1;    
+				req->status=404;
+				return -1;    
             }
             usr[i++] = *tmp++;
         }
@@ -241,11 +241,11 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		// printf("in ~ processing:%s\n",rest);
 		process_path(rest);		
 		// printf("afer:%s\n",rest);
-		#ifdef __APPLE__
-			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
-		#else	
-			sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
-		#endif
+#ifdef __APPLE__
+		sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
+#else	
+		sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
+#endif
         
     }
     else if (strncmp(uri,"/cgi-bin/",9) == 0) {
@@ -435,8 +435,8 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     }
 	if (req->method == POST)
 		
-	// printf("rest:%s\n",buf);
-	parse_rest(sock,buf,req);
+		// printf("rest:%s\n",buf);
+		parse_rest(sock,buf,req);
 	
 	if (req->contLen > 0)
 		Read(sock, req->msg_body, req->contLen);

@@ -66,7 +66,7 @@ time_t get_timet(char * str)
 	while ( *tmp == ' ' )
 		tmp++;		
 	/*  An example of the field is:
-	      If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT	
+		If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT	
 	
 		HTTP-date = rfc1123-date | rfc850-date | asctime-date
 		
@@ -76,35 +76,35 @@ time_t get_timet(char * str)
 	/* wkday, DD mth year HH:MM:SS GMT (rfc1123-date) */ 
 	if (sscanf(tmp,"%400[a-zA-Z], %d %400[a-zA-Z] %d %d:%d:%d GMT",wday,&mday,mon,&year,&hour,&min,&sec) == 7 &&
 		(w_day = get_wday(wday)) != -1 && (mth = get_mth(mon)) != -1 ) 
-	{
-		tm.tm_wday = w_day;
-		tm.tm_mday = mday;
-		tm.tm_mon = mth;
-		tm.tm_year = year;
-		tm.tm_hour = hour;
-		tm.tm_min = min;
-		tm.tm_sec = sec;
-		// printf("%s\n",str);
-		// printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
-	}
+		{
+			tm.tm_wday = w_day;
+			tm.tm_mday = mday;
+			tm.tm_mon = mth;
+			tm.tm_year = year;
+			tm.tm_hour = hour;
+			tm.tm_min = min;
+			tm.tm_sec = sec;
+			// printf("%s\n",str);
+			// printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
+		}
 	
 	/* weekday, DD-mth-YY HH:MM:SS GMT (rfc850-date)*/ 
 	else if (sscanf( tmp, "%[a-zA-Z], %d-%400[a-zA-Z]-%d %d:%d:%d GMT",wday,&mday,mon,&year,&hour,&min,&sec) == 7 &&
-		(w_day = get_wday(wday)) != -1 && (mth = get_mth(mon)) != -1 )
-	{
-		w_day = get_wday(wday);
-		mth = get_mth(mon);
+			 (w_day = get_wday(wday)) != -1 && (mth = get_mth(mon)) != -1 )
+		{
+			w_day = get_wday(wday);
+			mth = get_mth(mon);
 		
-		tm.tm_wday = w_day;
-		tm.tm_mday = mday;
-		tm.tm_mon = mth;
-		tm.tm_year = year;
-		tm.tm_hour = hour;
-		tm.tm_min = min;
-		tm.tm_sec = sec;
-		// printf("%s\n",str);
-		// printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
-	}
+			tm.tm_wday = w_day;
+			tm.tm_mday = mday;
+			tm.tm_mon = mth;
+			tm.tm_year = year;
+			tm.tm_hour = hour;
+			tm.tm_min = min;
+			tm.tm_sec = sec;
+			// printf("%s\n",str);
+			// printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
+		}
 	else return (time_t)-1;
 	
 	if ( tm.tm_year > 1900 )
@@ -408,18 +408,18 @@ int serve_POST_dynamic( int fd, Req_info *req ){
 	else if (pid == 0) {
 		// read from pipe1 instead of stdin, it means get data from parent
 		if (dup2(p1[0],STDIN_FILENO)==-1) {
-				req->status = 500;
-				sws_response(fd, req);
-				fprintf(stderr, "dup2 for pipe1 error.\n");
-				exit(1);
+			req->status = 500;
+			sws_response(fd, req);
+			fprintf(stderr, "dup2 for pipe1 error.\n");
+			exit(1);
 		}
 		close(p1[0]);
 		//write to pipe2 instead of stdout
 		if (dup2(p2[1],STDOUT_FILENO) == -1) {
-				req->status = 500;
-				sws_response(fd, req);
-				fprintf(stderr, "dup2 for pipe2 error.\n");
-				exit(1);
+			req->status = 500;
+			sws_response(fd, req);
+			fprintf(stderr, "dup2 for pipe2 error.\n");
+			exit(1);
 		}
 		close(p2[1]);
 		// execute the program

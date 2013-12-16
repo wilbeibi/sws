@@ -1,7 +1,7 @@
 /* $$ net.c
  *  
  */
-#ifdef __linux__
+#ifdef __linux || __sun
 #include <bsd/libutil.h>
 #endif
 #include <signal.h>

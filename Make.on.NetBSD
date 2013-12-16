@@ -1,1 +1,3 @@
+LIB= -lmagic
+ 
 CFLAGS=-std=gnu99 -Wall -DBSD -D__BSD_VISIBLE

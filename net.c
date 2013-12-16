@@ -1,7 +1,7 @@
 /* $$ net.c
  *  
  */
-#ifdef __linux
+#ifdef __linux__
 #include <bsd/libutil.h>
 #endif
 #include <signal.h>
@@ -54,7 +54,7 @@ int server_listen( Arg_t *optInfo){
     Bind(listenfd, res->ai_addr, res->ai_addrlen);
     Listen(listenfd, LISTENQ);
 
-    Signal(SIGCHLD, child_handler);
+    signal(SIGCHLD, child_handler);
 
     while(1){
         pid_t childpid;
@@ -92,7 +92,7 @@ int server_listen( Arg_t *optInfo){
 #else
 			fclose( pidfp );
 #endif
-            Signal(SIGTERM, SIG_DFL);
+            signal(SIGTERM, SIG_DFL);
             Close(listenfd);
             Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
 			memset(req.clientIp,0,sizeof(req.clientIp));

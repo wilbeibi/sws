@@ -115,12 +115,12 @@ ssize_t Send(int sock, const void *buf, size_t count, int flag){
         fprintf(stderr, "Send warning: %s.\n", strerror(errno));
     return (n);
 }
-sig_t Signal(int sig, sig_t func){
-    sig_t s;
-    if((s = signal(sig, func)) == SIG_ERR)
-        sys_err("signal child error");
-    return (s);
-}
+/* sig_t Signal(int sig, sig_t func){ */
+/*     sig_t s; */
+/*     if((s = signal(sig, func)) == SIG_ERR) */
+/*         sys_err("signal child error"); */
+/*     return (s); */
+/* } */
 
 int Readline(int fd, char* buf)
 {

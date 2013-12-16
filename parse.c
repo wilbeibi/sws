@@ -394,7 +394,7 @@ void parse_rest(int sock, char * buf, Req_info * req)
 void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 {
     _sock=sock;
-    Signal(SIGALRM, rd_timeout);
+    signal(SIGALRM, rd_timeout);
     alarm(READ_TIMEOUT);
 
     int ret;
@@ -447,7 +447,7 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 
     alarm(0);
     signal(SIGALRM, wt_timeout);
-    Signal(SIGALRM, wt_timeout);
+    signal(SIGALRM, wt_timeout);
     alarm(WRITE_TIMEOUT);
 
     serve_request(sock,req);

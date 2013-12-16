@@ -27,10 +27,10 @@ wt_timeout(int sig)
 void init_req(Req_info * req) 
 {
     req->status = 200;
-	req->contLen = 0;
+    req->contLen = 0;
     req->method = NOT_IMPLEMENTED;
     req->cgi = NO_CGI;
-	memset(req->ifModified,0,128);
+    memset(req->ifModified,0,128);
 }
 
 /**
@@ -171,15 +171,15 @@ void process_path(char * dir)
 
 void get_GET_query(Req_info * req, char * source)
 {
-	char * tmp = strstr(source,"?");
-	// int i= 0;
-	if (tmp != NULL && req->method == GET) { 
-		strcpy(req->query,tmp+1);
-	}
-	if (tmp != NULL)
-		*tmp = '\0';
-		
-	// printf("query:%s\n",req->query);
+    char * tmp = strstr(source,"?");
+    // int i= 0;
+    if (tmp != NULL && req->method == GET) { 
+        strcpy(req->query,tmp+1);
+    }
+    if (tmp != NULL)
+        *tmp = '\0';
+        
+    // printf("query:%s\n",req->query);
 }
 
 /**
@@ -206,17 +206,17 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     char usr[256];
     char rest[256];
     int i;
-	req->cgi=NO_CGI;
+    req->cgi=NO_CGI;
 
-	// printf("original uri:%s\n", uri);
-	/* http://babla. should also be valid
+    // printf("original uri:%s\n", uri);
+    /* http://babla. should also be valid
     if (req->uri[0] != '/') {
         req->status = 404;
         return -1;
     }
-	*/
+    */
 
-	/* According to sws man page, request for user home should start with '~'  */
+    /* According to sws man page, request for user home should start with '~'  */
     if (strncmp(uri,"/~",2) == 0) {
         tmp += 2;
         i = 0;
@@ -237,39 +237,39 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
             return -1;
         }      
         strncpy(rest,tmp+1,256);
-		/* prevent spoofing */
-		// printf("in ~ processing:%s\n",rest);
-		process_path(rest);		
-		// printf("afer:%s\n",rest);
-		#ifdef __APPLE__
-			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
-		#else	
-			sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
-		#endif
+        /* prevent spoofing */
+        // printf("in ~ processing:%s\n",rest);
+        process_path(rest);        
+        // printf("afer:%s\n",rest);
+        #ifdef __APPLE__
+            sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
+        #else    
+            sprintf(req->uri,"/home/%s/sws/%s",usr,rest+1);
+        #endif
         
     }
     else if (strncmp(uri,"/cgi-bin/",9) == 0) {
         req->cgi=DO_CGI;
         tmp = uri;
         tmp += 9;
-		strncpy(rest,tmp,256);
-		
-		if (optInfo->cgiDir != NULL) {
-			req->cgi=DO_CGI;
-			// printf("in cgi processing:%s\n",rest);
-			process_path(rest);
-			// printf("afer:%s\n",rest);
-			get_GET_query(req,rest);
-        	// sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);	
-		}		
-		else {
-			char tmp2[256];
-			strcpy(tmp2,req->uri);
-			// printf("processing:%s\n",req->uri);
-			process_path(req->uri);
-			// printf("afer:%s\n",tmp2);
-			sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
-		}	
+        strncpy(rest,tmp,256);
+        
+        if (optInfo->cgiDir != NULL) {
+            req->cgi=DO_CGI;
+            // printf("in cgi processing:%s\n",rest);
+            process_path(rest);
+            // printf("afer:%s\n",rest);
+            get_GET_query(req,rest);
+            // sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);    
+        }        
+        else {
+            char tmp2[256];
+            strcpy(tmp2,req->uri);
+            // printf("processing:%s\n",req->uri);
+            process_path(req->uri);
+            // printf("afer:%s\n",tmp2);
+            sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
+        }    
     }
     else {
         char tmp2[256];
@@ -367,27 +367,27 @@ int parse_req_line(char * buf, Req_info * req, Arg_t *optInfo)
 
 void parse_rest(int sock, char * buf, Req_info * req)
 {
-	char * tmp = strstr(buf,"If-Modified-Since:");
-	int i= 0;
-	if (tmp != NULL && req->method == GET) { 
-		tmp += 18;
-		while ( *tmp++ != '\r') {
-			req->ifModified[i++] = *tmp;
-		}
-		req->ifModified[i] = '\0';	
-	}
-	
-	tmp = strstr(buf,"Content-Length:");
-	i= 0;
-	if (tmp != NULL) { 
-		char len[10];
-		tmp += 15;
-		while ( *tmp++ != '\r' && i<10) {
-			len[i++] = *tmp;
-		}
-		req->contLen = atoi(len);	
-	}
-	// printf("len:%d\n",req->contLen);
+    char * tmp = strstr(buf,"If-Modified-Since:");
+    int i= 0;
+    if (tmp != NULL && req->method == GET) { 
+        tmp += 18;
+        while ( *tmp++ != '\r') {
+            req->ifModified[i++] = *tmp;
+        }
+        req->ifModified[i] = '\0';    
+    }
+    
+    tmp = strstr(buf,"Content-Length:");
+    i= 0;
+    if (tmp != NULL) { 
+        char len[10];
+        tmp += 15;
+        while ( *tmp++ != '\r' && i<10) {
+            len[i++] = *tmp;
+        }
+        req->contLen = atoi(len);    
+    }
+    // printf("len:%d\n",req->contLen);
 
 }
 
@@ -404,8 +404,8 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 
     /* read first line*/
     ret=read_req_line(sock,req,buf);
-	strncpy(req->fstLine,buf,strlen(buf)+1);
-	get_timestamp(req->recvTime);
+    strncpy(req->fstLine,buf,strlen(buf)+1);
+    get_timestamp(req->recvTime);
     if (ret==-1) {
         sws_response(sock, req);
         return;
@@ -433,17 +433,17 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
         sws_response(sock, req);
         return;
     }
-	if (req->method == POST)
-		
-	// printf("rest:%s\n",buf);
-	parse_rest(sock,buf,req);
-	
-	if (req->contLen > 0)
-		Read(sock, req->msg_body, req->contLen);
-	// printf("body:%s\n",req->msg_body);
-		
-	//sws_response(sock, req);
-	// printf("uri:%s\n",req->uri);
+    if (req->method == POST)
+        
+    // printf("rest:%s\n",buf);
+    parse_rest(sock,buf,req);
+    
+    if (req->contLen > 0)
+        Read(sock, req->msg_body, req->contLen);
+    // printf("body:%s\n",req->msg_body);
+        
+    //sws_response(sock, req);
+    // printf("uri:%s\n",req->uri);
 
     alarm(0);
     signal(SIGALRM, wt_timeout);

@@ -91,13 +91,13 @@ int server_listen( Arg_t *optInfo){
 #ifdef __linux
             pidfile_close(pfh);
 #else
-			fclose( pidfp );
+            fclose( pidfp );
 #endif
             signal(SIGTERM, SIG_DFL);
             Close(listenfd);
             Inet_ntop(AF_INET, &ipAddr, ipstr, INET_ADDRSTRLEN); /* Get client address in ipstr */
-			memset(req.clientIp,0,sizeof(req.clientIp));
-			strncpy(req.clientIp,ipstr,INET_ADDRSTRLEN);
+            memset(req.clientIp,0,sizeof(req.clientIp));
+            strncpy(req.clientIp,ipstr,INET_ADDRSTRLEN);
             read_sock(connfd, &req, optInfo);    
         
             exit(0);

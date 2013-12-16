@@ -1,4 +1,2 @@
 # Thanks for lbustama in this part
 LIB= -L /opt/local/lib/ -Wl,-rpath,/opt/local/lib/,-lmagic,-lsocket,-lnsl
-
-CFLAGS=-std=gnu99 -Wall -DSOLARIS -D__EXTENSIONS__

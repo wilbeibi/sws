@@ -179,7 +179,7 @@ void get_GET_query(Req_info * req, char * source)
 	if (tmp != NULL)
 		*tmp = '\0';
 		
-	printf("query:%s\n",req->query);
+	// printf("query:%s\n",req->query);
 }
 
 /**
@@ -208,7 +208,7 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     int i;
 	req->cgi=NO_CGI;
 
-	printf("original uri:%s\n", uri);
+	// printf("original uri:%s\n", uri);
 	/* http://babla. should also be valid
     if (req->uri[0] != '/') {
         req->status = 404;
@@ -238,9 +238,9 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
         }      
         strncpy(rest,tmp+1,256);
 		/* prevent spoofing */
-		printf("in ~ processing:%s\n",rest);
+		// printf("in ~ processing:%s\n",rest);
 		process_path(rest);		
-		printf("afer:%s\n",rest);
+		// printf("afer:%s\n",rest);
 		#ifdef __APPLE__
 			sprintf(req->uri,"Users/%s/Desktop/%s",usr,rest+1);
 		#else	
@@ -256,27 +256,27 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
 		
 		if (optInfo->cgiDir != NULL) {
 			req->cgi=DO_CGI;
-			printf("in cgi processing:%s\n",rest);
+			// printf("in cgi processing:%s\n",rest);
 			process_path(rest);
-			printf("afer:%s\n",rest);
+			// printf("afer:%s\n",rest);
 			get_GET_query(req,rest);
-        	sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);	
+        	// sprintf(req->uri,"%s%s",optInfo->cgiDir,rest+1);	
 		}		
 		else {
 			char tmp2[256];
 			strcpy(tmp2,req->uri);
-			printf("processing:%s\n",req->uri);
+			// printf("processing:%s\n",req->uri);
 			process_path(req->uri);
-			printf("afer:%s\n",tmp2);
+			// printf("afer:%s\n",tmp2);
 			sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
 		}	
     }
     else {
         char tmp2[256];
         strcpy(tmp2,req->uri);
-        printf("processing:%s\n",req->uri);
+        // printf("processing:%s\n",req->uri);
         process_path(tmp2);
-        printf("afer:%s\n",tmp2);
+        // printf("afer:%s\n",tmp2);
         sprintf(req->uri,"%s%s",optInfo->dir, tmp2+1);
     }
 
@@ -387,7 +387,7 @@ void parse_rest(int sock, char * buf, Req_info * req)
 		}
 		req->contLen = atoi(len);	
 	}
-	printf("len:%d\n",req->contLen);
+	// printf("len:%d\n",req->contLen);
 
 }
 
@@ -435,15 +435,15 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
     }
 	if (req->method == POST)
 		
-	printf("rest:%s\n",buf);
+	// printf("rest:%s\n",buf);
 	parse_rest(sock,buf,req);
 	
 	if (req->contLen > 0)
 		Read(sock, req->msg_body, req->contLen);
-	printf("body:%s\n",req->msg_body);
+	// printf("body:%s\n",req->msg_body);
 		
 	//sws_response(sock, req);
-	printf("uri:%s\n",req->uri);
+	// printf("uri:%s\n",req->uri);
 
     alarm(0);
     signal(SIGALRM, wt_timeout);

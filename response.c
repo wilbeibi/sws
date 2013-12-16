@@ -7,6 +7,8 @@
 #include "net.h"
 #include "response.h"
 
+extern int debug;
+extern FILE *log_fd;
 
 void get_timestamp(char *buf)
 {
@@ -93,14 +95,9 @@ void get_status_msg(int code, char msg[]) {
 void logging(Req_info *req) {
 	if (logDir != NULL) {
 	 	char msg[MAXBUF];
-		FILE * fp = NULL;
-		fp = fopen(logDir, "a");
-		if (!fp) {
-			perror("log file open failed");
-		}		
 		req->fstLine[strlen(req->fstLine)-2] = '\0';
 		sprintf(msg, "%s %s \"%s\" %d %d\n",req->clientIp,req->recvTime,req->fstLine,req->status,req->contLen);
-		(void)fwrite(msg,sizeof(char),strlen(msg),fp);
-		fclose(fp);
+		(void)fwrite(msg,sizeof(char),strlen(msg),log_fd);
+		// fclose(fp);
 	}	
 }

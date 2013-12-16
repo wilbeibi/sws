@@ -217,8 +217,8 @@ int parse_uri(Req_info * req, Arg_t *optInfo)
     */
 
     /* According to sws man page, request for user home should start with '~'  */
-    if (strncmp(uri,"/~",2) == 0) {
-        tmp += 2;
+    if (strncmp(uri,"~",1) == 0) {
+        tmp += 1;
         i = 0;
         while (*tmp != '/' ) {
         /* there must be a slash after the user name, otherwise it's invalid*/

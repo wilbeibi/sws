@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
             break;
         case 'd':        /* debugging mode */
             debug=1;
+            optInfo.logFile="./tmp.log";
             break;
         case 'h':        /* usage summary */
             usage();

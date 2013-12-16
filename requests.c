@@ -84,8 +84,8 @@ time_t get_timet(char * str)
 		tm.tm_hour = hour;
 		tm.tm_min = min;
 		tm.tm_sec = sec;
-		printf("%s\n",str);
-		printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
+		// printf("%s\n",str);
+		// printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
 	}
 	
 	/* weekday, DD-mth-YY HH:MM:SS GMT (rfc850-date)*/ 
@@ -102,8 +102,8 @@ time_t get_timet(char * str)
 		tm.tm_hour = hour;
 		tm.tm_min = min;
 		tm.tm_sec = sec;
-		printf("%s\n",str);
-		printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
+		// printf("%s\n",str);
+		// printf("%d %d %d %d %d:%d:%d\n",year,mth,mday,w_day,hour,min,sec);
 	}
 	else return (time_t)-1;
 	
@@ -119,7 +119,7 @@ time_t get_timet(char * str)
 int check_modified_since( Req_info * req, struct stat *st)
 {
 	if (!strlen(req->ifModified)) {
-		printf("no if modified since header\n");
+		// printf("no if modified since header\n");
 		return 0;
 	}
 		

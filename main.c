@@ -26,8 +26,9 @@
 
 static void usage();
 static char *progname;
-static int debug=0;
 
+FILE *log_fd;
+int debug=0;
 int procid;
 
 static void clean_up()
@@ -37,7 +38,7 @@ static void clean_up()
     (void)pidfile_remove(pfh);
 #else
 	if ((int) getpid() == procid)
-		(void)remove("./pidfile");
+		(void)remove("/tmp/sws");
 #endif
     return;
 }
@@ -75,7 +76,6 @@ int main(int argc, char *argv[])
     int opt = 0;
     Arg_t optInfo;
     progname = argv[0];
-	FILE * fp = NULL;
 	logDir = NULL;
     optInfo.cgiDir = NULL;
     optInfo.ipAddr = NULL;
@@ -139,10 +139,16 @@ int main(int argc, char *argv[])
 		if (logDir == NULL)
 			sys_err("strdup failed");
 		/*create log file if not exist*/
-		fp = fopen( logDir, "a" );
-		if (fp == NULL)
+		log_fd = fopen( logDir, "a" );
+		if (log_fd == NULL)
 			sys_err("open log failed");
-		fclose(fp);
+
+        if (debug) {
+            dup2(STDOUT_FILENO, fileno(log_fd));
+        } else {
+            dup2(fileno(log_fd), STDERR_FILENO);
+            dup2(fileno(log_fd), STDOUT_FILENO);
+        }
 	}
 
     /**
@@ -157,14 +163,14 @@ int main(int argc, char *argv[])
         atexit(clean_up);
         int opid;
 #ifdef __linux
-        pfh=pidfile_open("./pidfile", 0700, &opid);
+        pfh=pidfile_open("/tmp/sws", 0700, &opid);
         if (pfh==NULL) {
             if (errno==EEXIST)
                 errx(1, "already running, pid: %d", opid);
             warn("can't open or create pidfile");
         }
 #else
-        pidfp = fopen( "./pidfile", "w+" );
+        pidfp = fopen( "/tmp/sws", "w+" );
         if ( pidfp == NULL )
 			sys_err("open pidfile failed");
 			
@@ -175,7 +181,7 @@ int main(int argc, char *argv[])
 #ifdef __linux
             pidfile_remove(pfh);
 #else
-			(void)remove("./pidfile");			
+			(void)remove("/tmp/sws");			
 #endif
             err(1, "can't daemonize");
         }
@@ -189,7 +195,7 @@ int main(int argc, char *argv[])
 		fclose(pidfp);
 #endif
     }
-    printf("running with %d\n", getpid());
+    // printf("running with %d\n", getpid());
     
     server_listen(&optInfo);
 

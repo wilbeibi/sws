@@ -1,7 +1,7 @@
 ROOT=.
 include $(ROOT)/Make.on.$(PLATFORM)
 CC=gcc
-PROG= main
+PROG= sws
 OBJS= main.o net.o util.o parse.o response.o requests.o
 # LFLAG= -lmagic 
 all:	$(PROG)

@@ -173,8 +173,14 @@ int serve_request(int fd, Req_info *req){
         /* req' uri*/
         if (req->method == GET)
             return serve_GET_dynamic(fd, req);
-        else if (req->method == POST)
+        else if (req->method == POST) {
+            if (req->contLen==0) {
+                req->status=400;
+                sws_response(fd, req);
+                return 1;
+            }
             return serve_POST_dynamic(fd, req);
+        }
     }
     return 0;
 }

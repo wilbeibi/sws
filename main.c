@@ -45,7 +45,7 @@ static void clean_up()
 static void sig_term(int sig)
 {
     clean_up();
-    Signal(SIGTERM, SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
     raise(SIGTERM);
     return;
 }
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
      * flopen pidfile, write, remove on error and exit
      */
     if (!debug) {
-        Signal(SIGTERM, sig_term);
+        signal(SIGTERM, sig_term);
         atexit(clean_up);
         int opid;
 #ifdef __linux

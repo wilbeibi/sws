@@ -403,7 +403,8 @@ void read_sock(int sock, Req_info *req, Arg_t *optInfo)
 
     /* read first line*/
     ret=read_req_line(sock,req,buf);
-    strncpy(req->fstLine,buf,strlen(buf)+1);
+    strcpy(req->fstLine,buf);
+    req->fstLine[strlen(buf)-1]=0;
     get_timestamp(req->recvTime);
     if (ret==-1) {
         sws_response(sock, req);

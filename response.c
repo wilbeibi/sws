@@ -95,7 +95,6 @@ void get_status_msg(int code, char msg[]) {
 void logging(Req_info *req) {
     if (logDir != NULL) {
          char msg[MAXBUF];
-        req->fstLine[strlen(req->fstLine)-2] = '\0';
         sprintf(msg, "%s %s \"%s\" %d %d\n",req->clientIp,req->recvTime,req->fstLine,req->status,req->contLen);
         (void)fwrite(msg,sizeof(char),strlen(msg),log_fd);
         // fclose(fp);

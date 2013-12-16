@@ -1,0 +1,1 @@
+CFLAGS=-std=gnu99 -Wall -DSOLARIS -D__EXTENSIONS__ -lbsd

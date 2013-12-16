@@ -2,7 +2,7 @@
  *  
  */
 
-#ifdef __linux || __sun
+#ifdef __linux 
 #include <bsd/libutil.h>
 #endif
 #include <signal.h>
